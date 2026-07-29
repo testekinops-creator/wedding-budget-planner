@@ -1,7 +1,8 @@
 /**
  * script.js
  * Ties the app together: state, rendering, calculations, persistence,
- * search/sort, dark mode, toast/modal UI, and hooks into charts.js / pdf.js.
+ * search/sort, dark mode, toast/modal UI, scroll reveals, and hooks
+ * into charts.js / pdf.js.
  */
 
 (function () {
@@ -98,7 +99,7 @@
   const counterState = new WeakMap();
   function animateValue(el, toValue, formatter) {
     const from = counterState.get(el) || 0;
-    const duration = 500;
+    const duration = 600;
     const start = performance.now();
 
     function step(now) {
@@ -171,7 +172,7 @@
     return list;
   }
 
-  function cardTemplate(cat) {
+  function cardTemplate(cat, index) {
     const overUnder = cat.actual > cat.max
       ? '<span class="over">₹' + Math.round(cat.actual - cat.max).toLocaleString('en-IN') + ' over estimate</span>'
       : (cat.actual < cat.min
@@ -179,7 +180,7 @@
         : '<span class="under">Within estimate</span>');
 
     return (
-      '<article class="category-card" data-id="' + cat.id + '">' +
+      '<article class="category-card reveal" data-id="' + cat.id + '" data-delay="' + index + '">' +
         '<div class="category-head">' +
           '<h3 class="category-name">' + cat.name + '</h3>' +
           '<span class="estimate-pill">' + formatRange(cat.min, cat.max) + '</span>' +
@@ -209,6 +210,10 @@
       return;
     }
     listEl.innerHTML = visible.map(cardTemplate).join('');
+    // Trigger reveal animations for new cards
+    requestAnimationFrame(function () {
+      triggerReveals();
+    });
   }
 
   function renderAll() {
@@ -263,7 +268,7 @@
     }
     persistState();
     renderTotals();
-    showToast('Wedding Budget Saved Successfully');
+    showToast('Wedding Budget Saved Successfully ✨');
   });
 
   resetBtn.addEventListener('click', function () {
@@ -322,11 +327,34 @@
     });
   });
 
+  // ---- Scroll reveal animations ----
+  function triggerReveals() {
+    var reveals = document.querySelectorAll('.reveal:not(.visible)');
+    reveals.forEach(function (el) {
+      var delay = parseInt(el.getAttribute('data-delay') || '0', 10);
+      var rect = el.getBoundingClientRect();
+      var windowH = window.innerHeight || document.documentElement.clientHeight;
+
+      if (rect.top < windowH - 40) {
+        setTimeout(function () {
+          el.classList.add('visible');
+        }, delay * 80);
+      }
+    });
+  }
+
+  window.addEventListener('scroll', triggerReveals, { passive: true });
+
   // ---- Init ----
   function init() {
     loadTheme();
     categories = loadState();
     renderAll();
+
+    // Trigger initial reveal animations
+    requestAnimationFrame(function () {
+      triggerReveals();
+    });
 
     // If Chart.js CDN hasn't loaded yet, retry once it does.
     if (typeof Chart === 'undefined') {

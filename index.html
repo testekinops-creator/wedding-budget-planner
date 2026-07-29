@@ -8,12 +8,11 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="style.css?v=2" />
+<link rel="stylesheet" href="style.css?v=3" />
 
-<!-- Signature gold "invitation card" corner motif, referenced as a CSS variable so it can
-     be reused in the header and the sticky summary panel without duplicating markup. -->
+<!-- Signature gold motif SVG -->
 <style>
   :root {
     --paisley-svg: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23C9A227' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M6 6 C 40 4, 50 26, 34 40 C 22 50, 30 62, 44 58 C 58 54, 56 38, 46 36'/%3E%3Ccircle cx='46' cy='36' r='3'/%3E%3Cpath d='M6 6 L 26 6 M 6 6 L 6 26'/%3E%3Ccircle cx='14' cy='14' r='1.6' fill='%23C9A227'/%3E%3Ccircle cx='22' cy='10' r='1.2' fill='%23C9A227'/%3E%3Ccircle cx='10' cy='22' r='1.2' fill='%23C9A227'/%3E%3C/g%3E%3C/svg%3E");
@@ -22,10 +21,20 @@
 </head>
 <body>
 
+<!-- Floating ambient particles -->
+<div class="ambient-bg" aria-hidden="true">
+  <div class="particle p1"></div>
+  <div class="particle p2"></div>
+  <div class="particle p3"></div>
+  <div class="particle p4"></div>
+  <div class="particle p5"></div>
+</div>
+
 <header class="hero">
+  <div class="hero-glow"></div>
   <div class="hero-inner">
     <div class="hero-title-row">
-      <span class="eyebrow">Shaadi Ka Kharcha, Sorted</span>
+      <span class="eyebrow">✨ Shaadi Ka Kharcha, Sorted</span>
       <h1>Wedding Budget Planner</h1>
       <p>Track every rupee across your ceremonies — estimate, edit, and see your totals update instantly.</p>
     </div>
@@ -42,30 +51,35 @@
 
   <!-- Dashboard -->
   <section class="dashboard" aria-label="Budget overview">
-    <div class="stat-card">
+    <div class="stat-card reveal" data-delay="0">
+      <div class="stat-icon">💰</div>
       <div class="stat-label">Estimated Budget</div>
       <div class="stat-value" id="statEstimated">₹0</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card reveal" data-delay="1">
+      <div class="stat-icon">📊</div>
       <div class="stat-label">Actual Cost</div>
       <div class="stat-value" id="statActual">₹0</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card reveal" data-delay="2">
+      <div class="stat-icon">🏦</div>
       <div class="stat-label">Remaining Budget</div>
       <div class="stat-value" id="statRemaining">₹0</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card reveal" data-delay="3">
+      <div class="stat-icon">📋</div>
       <div class="stat-label">Total Categories</div>
       <div class="stat-value" id="statCategories">0</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card reveal" data-delay="4">
+      <div class="stat-icon">🎯</div>
       <div class="stat-label">Grand Total</div>
       <div class="stat-value" id="statGrandTotal">₹0</div>
     </div>
   </section>
 
   <!-- Toolbar -->
-  <section class="toolbar">
+  <section class="toolbar reveal">
     <div class="search-field">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <input type="text" id="searchInput" placeholder="Search categories…" aria-label="Search categories" />
@@ -90,6 +104,7 @@
 
     <!-- Sticky summary -->
     <aside class="summary-panel" id="summaryPanel">
+      <div class="summary-glow"></div>
       <h2>Budget Summary</h2>
       <div class="summary-row"><span>Minimum estimate</span><span id="sumMin">₹0</span></div>
       <div class="summary-row"><span>Maximum estimate</span><span id="sumMax">₹0</span></div>
@@ -120,7 +135,7 @@
   </div>
 
   <!-- Charts -->
-  <section class="charts-section">
+  <section class="charts-section reveal">
     <h2 class="section-title">Where the budget goes</h2>
     <div class="charts-grid">
       <div class="chart-card">
@@ -139,7 +154,10 @@
   </section>
 
   <footer class="app-footer">
-    Wedding Budget Planner — your data is saved locally in this browser only.
+    <div class="footer-content">
+      <span class="footer-brand">💍 Wedding Budget Planner</span>
+      <span class="footer-note">Your data is saved locally in this browser only.</span>
+    </div>
   </footer>
 </main>
 
@@ -161,16 +179,21 @@
   </div>
 </div>
 
-<!-- Libraries -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- Libraries with CDN fallbacks -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  if (typeof Chart === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"><\/script>');
+  }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <!-- App modules -->
-<script src="data.js?v=2"></script>
-<script src="charts.js?v=2"></script>
-<script src="pdf.js?v=2"></script>
-<script src="script.js?v=2"></script>
+<script src="data.js?v=3"></script>
+<script src="charts.js?v=3"></script>
+<script src="pdf.js?v=3"></script>
+<script src="script.js?v=3"></script>
 </body>
 </html>
