@@ -1,9 +1,12 @@
 /**
  * charts.js
- * Creates and updates the three Chart.js visualisations:
- * category-wise pie, estimated-vs-actual bar, and expense-distribution doughnut.
- * Exposes window.WeddingCharts.render(categories) for script.js to call after
- * every save, search, or sort.
+ * Creates and updates Chart.js visualisations:
+ * - Category-wise pie chart
+ * - Estimated-vs-actual bar chart
+ * - Payment progress doughnut (paid vs pending)
+ * - Family contribution chart (called from script.js)
+ * Exposes window.WeddingCharts.render(categories) and
+ * window.WeddingCharts.renderContributions(labels, data, colors).
  */
 
 (function () {
@@ -12,7 +15,7 @@
     '#C4342B', '#8A6D3B', '#3E7C8A', '#B25EA8', '#6E8B3D'
   ];
 
-  var pieChart, barChart, doughnutChart;
+  var pieChart, barChart, doughnutChart, contribChart;
 
   function currency(n) {
     return '₹' + Math.round(n).toLocaleString('en-IN');
@@ -49,13 +52,9 @@
     }, extra || {});
   }
 
-  /**
-   * Show a fallback message inside a chart card when Chart.js is unavailable.
-   */
   function showFallback(canvasEl, message) {
     var parent = canvasEl.parentElement;
     if (!parent) return;
-    // Don't add duplicate fallbacks
     if (parent.querySelector('.chart-fallback')) return;
     var div = document.createElement('div');
     div.className = 'chart-fallback';
@@ -71,7 +70,6 @@
     var doughnutCtx = document.getElementById('doughnutChart');
     if (!pieCtx || !barCtx || !doughnutCtx) return;
 
-    // Guard: Chart.js must be loaded
     if (typeof Chart === 'undefined') {
       showFallback(pieCtx, 'Loading charts…');
       showFallback(barCtx, 'Loading charts…');
@@ -80,7 +78,6 @@
       return;
     }
 
-    // Remove any fallback messages
     [pieCtx, barCtx, doughnutCtx].forEach(function (el) {
       el.style.display = '';
       var fb = el.parentElement && el.parentElement.querySelector('.chart-fallback');
@@ -94,6 +91,7 @@
     var avgEstimates = categories.map(function (c, i) {
       return (minEstimates[i] + maxEstimates[i]) / 2;
     });
+    var paids = categories.map(function (c) { return c.paid || 0; });
 
     // Pie: category-wise actual spending
     if (pieChart) pieChart.destroy();
@@ -125,17 +123,82 @@
       })
     });
 
-    // Doughnut: expense distribution
+    // Doughnut: payment progress (total paid vs total pending)
+    var totalPaid = paids.reduce(function (s, v) { return s + v; }, 0);
+    var totalActual = actuals.reduce(function (s, v) { return s + v; }, 0);
+    var totalPending = Math.max(0, totalActual - totalPaid);
+
     if (doughnutChart) doughnutChart.destroy();
     doughnutChart = new Chart(doughnutCtx, {
       type: 'doughnut',
       data: {
-        labels: labels,
-        datasets: [{ data: actuals, backgroundColor: PALETTE, borderWidth: 0 }]
+        labels: ['Paid', 'Pending'],
+        datasets: [{
+          data: [totalPaid, totalPending],
+          backgroundColor: ['#2E7D46', '#F26A00'],
+          borderWidth: 0
+        }]
       },
-      options: baseOptions({ cutout: '62%' })
+      options: baseOptions({
+        cutout: '62%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 10, font: { size: 12 }, color: getLegendColor() }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                return ctx.label + ': ' + currency(ctx.parsed);
+              }
+            }
+          }
+        }
+      })
     });
   }
 
-  window.WeddingCharts = { render: render };
+  function renderContributions(labels, data, colors) {
+    var contribCtx = document.getElementById('contributionChart');
+    if (!contribCtx) return;
+    if (typeof Chart === 'undefined') {
+      showFallback(contribCtx, 'Loading chart…');
+      return;
+    }
+    contribCtx.style.display = '';
+    var fb = contribCtx.parentElement && contribCtx.parentElement.querySelector('.chart-fallback');
+    if (fb) fb.remove();
+
+    if (contribChart) contribChart.destroy();
+    contribChart = new Chart(contribCtx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: colors,
+          borderWidth: 0
+        }]
+      },
+      options: baseOptions({
+        cutout: '55%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 10, font: { size: 11 }, color: getLegendColor() }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) { return ctx.label + ': ' + currency(ctx.parsed); }
+            }
+          }
+        }
+      })
+    });
+  }
+
+  window.WeddingCharts = {
+    render: render,
+    renderContributions: renderContributions
+  };
 })();
