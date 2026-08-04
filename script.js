@@ -247,7 +247,8 @@
     coins: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.1 10.3A6 6 0 0 1 16 21.7"/><path d="M14 11.5a6 6 0 0 1 4 5.7"/></svg>',
     sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5H18l-3.7 2.8 1.4 4.5L12 12l-3.7 2.8 1.4-4.5L6 7.5h4.5z"/></svg>',
     vendor: '<svg class="vendor-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h6M8 15h4"/></svg>',
-    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.4 2.1L8 9.7a16 16 0 0 0 6.3 6.3l1.3-1.3a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.7a2 2 0 0 1 1.7 2z"/></svg>'
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.4 2.1L8 9.7a16 16 0 0 0 6.3 6.3l1.3-1.3a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.7a2 2 0 0 1 1.7 2z"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
   };
 
   function generateInsights(cats, totals) {
@@ -628,77 +629,81 @@
           '<div class="category-head-right">' +
             paymentStatusBadge(cat) +
             '<span class="estimate-pill">' + formatRange(cat.min, cat.max) + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<p class="category-desc">' + cat.description + '</p>' +
-
-        // Payment tracker row
-        '<div class="field-row field-row-3">' +
-          '<div class="field actual">' +
-            '<label for="actual-' + cat.id + '">Actual price</label>' +
-            '<div class="input-prefix">' +
-              '<input type="number" min="0" step="1000" id="actual-' + cat.id + '" data-field="actual" value="' + cat.actual + '" />' +
-            '</div>' +
-          '</div>' +
-          '<div class="field paid-field">' +
-            '<label for="paid-' + cat.id + '">Amount paid</label>' +
-            '<div class="input-prefix">' +
-              '<input type="number" min="0" step="1000" id="paid-' + cat.id + '" data-field="paid" value="' + (cat.paid || 0) + '" />' +
-            '</div>' +
-          '</div>' +
-          '<div class="field">' +
-            '<label for="notes-' + cat.id + '">Notes</label>' +
-            '<textarea id="notes-' + cat.id + '" data-field="notes" rows="1" placeholder="Optional note…">' + (cat.notes || '') + '</textarea>' +
+            '<button class="card-toggle-btn" title="Expand / Collapse">' + SVG.chevron + '</button>' +
           '</div>' +
         '</div>' +
 
-        // Editable estimated budget
-        '<div class="field-row">' +
-          '<div class="field">' +
-            '<label for="min-' + cat.id + '">Min estimate</label>' +
-            '<div class="input-prefix">' +
-              '<input type="number" min="0" step="1000" id="min-' + cat.id + '" data-field="min" value="' + cat.min + '" />' +
+        '<div class="card-body">' +
+          '<p class="category-desc">' + cat.description + '</p>' +
+
+          // Payment tracker row
+          '<div class="field-row field-row-3">' +
+            '<div class="field actual">' +
+              '<label for="actual-' + cat.id + '">Actual price</label>' +
+              '<div class="input-prefix">' +
+                '<input type="number" min="0" step="1000" id="actual-' + cat.id + '" data-field="actual" value="' + cat.actual + '" />' +
+              '</div>' +
+            '</div>' +
+            '<div class="field paid-field">' +
+              '<label for="paid-' + cat.id + '">Amount paid</label>' +
+              '<div class="input-prefix">' +
+                '<input type="number" min="0" step="1000" id="paid-' + cat.id + '" data-field="paid" value="' + (cat.paid || 0) + '" />' +
+              '</div>' +
+            '</div>' +
+            '<div class="field">' +
+              '<label for="notes-' + cat.id + '">Notes</label>' +
+              '<textarea id="notes-' + cat.id + '" data-field="notes" rows="1" placeholder="Optional note…">' + (cat.notes || '') + '</textarea>' +
             '</div>' +
           '</div>' +
-          '<div class="field">' +
-            '<label for="max-' + cat.id + '">Max estimate</label>' +
-            '<div class="input-prefix">' +
-              '<input type="number" min="0" step="1000" id="max-' + cat.id + '" data-field="max" value="' + cat.max + '" />' +
+
+          // Editable estimated budget
+          '<div class="field-row">' +
+            '<div class="field">' +
+              '<label for="min-' + cat.id + '">Min estimate</label>' +
+              '<div class="input-prefix">' +
+                '<input type="number" min="0" step="1000" id="min-' + cat.id + '" data-field="min" value="' + cat.min + '" />' +
+              '</div>' +
+            '</div>' +
+            '<div class="field">' +
+              '<label for="max-' + cat.id + '">Max estimate</label>' +
+              '<div class="input-prefix">' +
+                '<input type="number" min="0" step="1000" id="max-' + cat.id + '" data-field="max" value="' + cat.max + '" />' +
+              '</div>' +
             '</div>' +
           '</div>' +
+
+          paymentProgressBar(cat) +
+
+          // Contributor dropdown (Feature 4)
+          contributorDropdown(cat) +
+
+          // Vendor details expandable (Feature 5)
+          '<details class="vendor-details">' +
+            '<summary class="vendor-toggle">' + SVG.vendor + ' Vendor Details' + (vendorName ? ' — <strong>' + vendorName + '</strong>' : '') + '</summary>' +
+            '<div class="vendor-grid">' +
+              '<div class="field"><label for="vname-' + cat.id + '">Vendor name</label>' +
+                '<input type="text" id="vname-' + cat.id + '" data-field="vendor.name" value="' + vendorName + '" placeholder="Name" /></div>' +
+              '<div class="field"><label for="vphone-' + cat.id + '">Phone</label>' +
+                '<input type="text" id="vphone-' + cat.id + '" data-field="vendor.phone" value="' + vendorPhone + '" placeholder="Phone" />' +
+                (vendorPhone ? '<a href="tel:' + vendorPhone + '" class="vendor-call-link">' + SVG.phone + ' Call</a>' : '') +
+              '</div>' +
+              '<div class="field"><label for="vemail-' + cat.id + '">Email</label>' +
+                '<input type="text" id="vemail-' + cat.id + '" data-field="vendor.email" value="' + vendorEmail + '" placeholder="Email" /></div>' +
+              '<div class="field"><label for="vstatus-' + cat.id + '">Status</label>' +
+                '<select id="vstatus-' + cat.id + '" data-field="vendor.status">' + vendorStatusOpts(vendorStatus) + '</select></div>' +
+            '</div>' +
+            '<div class="vendor-receipt-row">' +
+              '<label class="receipt-upload-btn">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>' +
+                (cat.receipt ? 'Replace Receipt' : 'Upload Receipt') +
+                '<input type="file" accept="image/*" data-field="receipt" class="receipt-input" style="display:none" />' +
+              '</label>' +
+              receiptThumb +
+            '</div>' +
+          '</details>' +
+
+          '<div class="category-foot">' + overUnder + '</div>' +
         '</div>' +
-
-        paymentProgressBar(cat) +
-
-        // Contributor dropdown (Feature 4)
-        contributorDropdown(cat) +
-
-        // Vendor details expandable (Feature 5)
-        '<details class="vendor-details">' +
-          '<summary class="vendor-toggle">' + SVG.vendor + ' Vendor Details' + (vendorName ? ' — <strong>' + vendorName + '</strong>' : '') + '</summary>' +
-          '<div class="vendor-grid">' +
-            '<div class="field"><label for="vname-' + cat.id + '">Vendor name</label>' +
-              '<input type="text" id="vname-' + cat.id + '" data-field="vendor.name" value="' + vendorName + '" placeholder="Name" /></div>' +
-            '<div class="field"><label for="vphone-' + cat.id + '">Phone</label>' +
-              '<input type="text" id="vphone-' + cat.id + '" data-field="vendor.phone" value="' + vendorPhone + '" placeholder="Phone" />' +
-              (vendorPhone ? '<a href="tel:' + vendorPhone + '" class="vendor-call-link">' + SVG.phone + ' Call</a>' : '') +
-            '</div>' +
-            '<div class="field"><label for="vemail-' + cat.id + '">Email</label>' +
-              '<input type="text" id="vemail-' + cat.id + '" data-field="vendor.email" value="' + vendorEmail + '" placeholder="Email" /></div>' +
-            '<div class="field"><label for="vstatus-' + cat.id + '">Status</label>' +
-              '<select id="vstatus-' + cat.id + '" data-field="vendor.status">' + vendorStatusOpts(vendorStatus) + '</select></div>' +
-          '</div>' +
-          '<div class="vendor-receipt-row">' +
-            '<label class="receipt-upload-btn">' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>' +
-              (cat.receipt ? 'Replace Receipt' : 'Upload Receipt') +
-              '<input type="file" accept="image/*" data-field="receipt" class="receipt-input" style="display:none" />' +
-            '</label>' +
-            receiptThumb +
-          '</div>' +
-        '</details>' +
-
-        '<div class="category-foot">' + overUnder + '</div>' +
       '</article>'
     );
   }
@@ -816,6 +821,14 @@
   });
   receiptLightbox.addEventListener('click', function (e) {
     if (e.target === receiptLightbox) receiptLightbox.classList.remove('show');
+  });
+
+  // Card collapse/expand toggle
+  listEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('.card-toggle-btn');
+    if (!btn) return;
+    var card = btn.closest('.category-card');
+    if (card) card.classList.toggle('collapsed');
   });
 
   listEl.addEventListener('blur', function (e) {
