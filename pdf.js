@@ -338,19 +338,41 @@
     var chartsSection = document.querySelector('.charts-section');
     if (chartsSection && window.html2canvas) {
       try {
+        // Check that at least one canvas has real drawn content (non-blank pixels)
         var canvasElements = chartsSection.querySelectorAll('canvas');
-        var hasContent = false;
-        canvasElements.forEach(function (c) {
-          if (c.width > 0 && c.height > 0) hasContent = true;
+        var hasRealContent = false;
+        canvasElements.forEach(function (cvs) {
+          if (cvs.width > 0 && cvs.height > 0) {
+            try {
+              var ctx2d = cvs.getContext('2d');
+              if (ctx2d) {
+                var sample = ctx2d.getImageData(0, 0, Math.min(cvs.width, 50), Math.min(cvs.height, 50));
+                for (var px = 3; px < sample.data.length; px += 4) {
+                  if (sample.data[px] > 0) { hasRealContent = true; break; }
+                }
+              }
+            } catch (e) { /* cross-origin – assume content exists */ hasRealContent = true; }
+          }
         });
 
-        if (hasContent) {
+        if (hasRealContent) {
+          // Force the section visible if it hasn't been scrolled into view yet
+          var origStyles = chartsSection.style.cssText;
+          chartsSection.style.opacity = '1';
+          chartsSection.style.transform = 'none';
+          chartsSection.style.visibility = 'visible';
+          chartsSection.classList.add('visible');
+
           var canvas = await html2canvas(chartsSection, {
             scale: 2,
             backgroundColor: '#ffffff',
             useCORS: true,
             logging: false
           });
+
+          // Restore original styles
+          chartsSection.style.cssText = origStyles;
+
           var imgData = canvas.toDataURL('image/png');
           var imgWidth = pw - mx * 2;
           var imgHeight = (canvas.height / canvas.width) * imgWidth;
