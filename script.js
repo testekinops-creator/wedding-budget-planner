@@ -353,10 +353,40 @@
     requestAnimationFrame(step);
   }
 
+  // ---- Colour-grading helper ----
+  function applyColorGrade(el, value, opts) {
+    // Remove all grading classes first
+    el.classList.remove('val-positive', 'val-negative', 'val-warning', 'val-info', 'val-neutral');
+    if (!opts) opts = {};
+
+    if (opts.mode === 'remaining') {
+      el.classList.add(value < 0 ? 'val-negative' : value > 0 ? 'val-positive' : 'val-neutral');
+    } else if (opts.mode === 'difference') {
+      el.classList.add(value > 0 ? 'val-negative' : value < 0 ? 'val-positive' : 'val-neutral');
+    } else if (opts.mode === 'paid') {
+      el.classList.add(value > 0 ? 'val-positive' : 'val-neutral');
+    } else if (opts.mode === 'pending') {
+      el.classList.add(value > 0 ? 'val-warning' : 'val-positive');
+    } else if (opts.mode === 'variance') {
+      el.classList.add(value > 5 ? 'val-negative' : value < -5 ? 'val-positive' : 'val-info');
+    } else if (opts.mode === 'utilized') {
+      el.classList.add(value >= 80 ? 'val-positive' : value >= 40 ? 'val-warning' : 'val-info');
+    } else {
+      el.classList.add('val-neutral');
+    }
+  }
+
+  function applyStatCardAccent(cardEl, cls) {
+    if (!cardEl) return;
+    cardEl.classList.remove('accent-green', 'accent-red', 'accent-amber', 'accent-blue', 'accent-orange');
+    cardEl.classList.add(cls);
+  }
+
   // ---- Rendering: dashboard + summary ----
   function renderTotals() {
     var totals = computeTotals(categories);
 
+    // Dashboard stat cards
     animateValue(document.getElementById('statEstimated'), totals.estimatedAvg, formatINR);
     animateValue(document.getElementById('statActual'), totals.actual, formatINR);
     animateValue(document.getElementById('statPaid'), totals.paid, formatINR);
@@ -367,23 +397,68 @@
     remainingEl.classList.toggle('danger', totals.remaining < 0);
     remainingEl.classList.toggle('success', totals.remaining >= 0);
 
-    document.getElementById('sumMin').textContent = formatINR(totals.min);
-    document.getElementById('sumMax').textContent = formatINR(totals.max);
-    document.getElementById('sumActual').textContent = formatINR(totals.actual);
+    // Stat card accent borders
+    var statCards = document.querySelectorAll('.stat-card');
+    if (statCards.length >= 5) {
+      applyStatCardAccent(statCards[0], 'accent-blue');     // Estimated
+      applyStatCardAccent(statCards[1], 'accent-orange');   // Actual
+      applyStatCardAccent(statCards[2], totals.remaining < 0 ? 'accent-red' : 'accent-green'); // Remaining
+      applyStatCardAccent(statCards[3], totals.paid > 0 ? 'accent-green' : 'accent-amber');   // Paid
+      applyStatCardAccent(statCards[4], totals.pending > 0 ? 'accent-amber' : 'accent-green'); // Pending
+    }
 
+    // Summary panel — estimates
+    var sumMinEl = document.getElementById('sumMin');
+    sumMinEl.textContent = formatINR(totals.min);
+    applyColorGrade(sumMinEl, 0, { mode: 'utilized' });
+
+    var sumMaxEl = document.getElementById('sumMax');
+    sumMaxEl.textContent = formatINR(totals.max);
+    applyColorGrade(sumMaxEl, 0, { mode: 'utilized' });
+
+    var sumActualEl = document.getElementById('sumActual');
+    sumActualEl.textContent = formatINR(totals.actual);
+    // Actual: red if over max, green if under min, amber if in range
+    if (totals.actual > totals.max) {
+      sumActualEl.classList.remove('val-positive', 'val-warning', 'val-info', 'val-neutral');
+      sumActualEl.classList.add('val-negative');
+    } else if (totals.actual <= totals.min) {
+      sumActualEl.classList.remove('val-negative', 'val-warning', 'val-info', 'val-neutral');
+      sumActualEl.classList.add('val-positive');
+    } else {
+      sumActualEl.classList.remove('val-positive', 'val-negative', 'val-info', 'val-neutral');
+      sumActualEl.classList.add('val-warning');
+    }
+
+    // Difference
     var diffEl = document.getElementById('sumDifference');
     diffEl.textContent = (totals.difference > 0 ? '+' : '') + formatINR(totals.difference);
+    applyColorGrade(diffEl, totals.difference, { mode: 'difference' });
 
-    document.getElementById('sumVariance').textContent = (totals.variancePct > 0 ? '+' : '') + totals.variancePct.toFixed(1) + '%';
+    // Variance
+    var varianceEl = document.getElementById('sumVariance');
+    varianceEl.textContent = (totals.variancePct > 0 ? '+' : '') + totals.variancePct.toFixed(1) + '%';
+    applyColorGrade(varianceEl, totals.variancePct, { mode: 'variance' });
 
     // Payment summary
-    document.getElementById('sumPaid').textContent = formatINR(totals.paid);
-    document.getElementById('sumPending').textContent = formatINR(Math.max(0, totals.pending));
-    document.getElementById('sumUtilized').textContent = totals.utilizedPct.toFixed(1) + '%';
+    var sumPaidEl = document.getElementById('sumPaid');
+    sumPaidEl.textContent = formatINR(totals.paid);
+    applyColorGrade(sumPaidEl, totals.paid, { mode: 'paid' });
 
+    var sumPendingEl = document.getElementById('sumPending');
+    sumPendingEl.textContent = formatINR(Math.max(0, totals.pending));
+    applyColorGrade(sumPendingEl, totals.pending, { mode: 'pending' });
+
+    // Utilized
+    var sumUtilEl = document.getElementById('sumUtilized');
+    sumUtilEl.textContent = totals.utilizedPct.toFixed(1) + '%';
+    applyColorGrade(sumUtilEl, totals.utilizedPct, { mode: 'utilized' });
+
+    // Remaining
     var remainSumEl = document.getElementById('sumRemaining');
     remainSumEl.textContent = formatINR(totals.remaining);
-    remainSumEl.style.color = totals.remaining < 0 ? 'var(--danger)' : 'var(--orange)';
+    remainSumEl.style.color = '';
+    applyColorGrade(remainSumEl, totals.remaining, { mode: 'remaining' });
 
     // Health score
     renderHealthScore(categories, totals);

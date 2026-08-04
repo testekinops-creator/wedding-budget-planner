@@ -112,7 +112,7 @@
 
     // ── Budget Summary ── (inside a card)
     var sy = 105;
-    var cardH = 114;
+    var cardH = 138;
     drawRoundedRect(doc, mx, sy, usable, cardH, 6, C.offWhite, C.lightGray);
 
     // Card heading
@@ -124,16 +124,54 @@
     // Gold mini-line under heading
     goldAccentLine(doc, mx + 16, sy + 28, 40);
 
-    // Summary rows
+    // Colour-grading helper for PDF values
+    function valueColor(mode, val) {
+      if (mode === 'remaining')  return val < 0 ? C.redText : C.greenText;
+      if (mode === 'difference') return val > 0 ? C.redText : val < 0 ? C.greenText : C.navy;
+      if (mode === 'paid')       return val > 0 ? C.greenText : C.midGray;
+      if (mode === 'pending')    return val > 0 ? [180, 130, 20] : C.greenText;
+      if (mode === 'actual') {
+        if (val > totals.max) return C.redText;
+        if (val <= totals.min) return C.greenText;
+        return [180, 130, 20];
+      }
+      return C.navy;
+    }
+
+    function valueBg(mode, val) {
+      if (mode === 'remaining')  return val < 0 ? C.redBg : C.greenBg;
+      if (mode === 'difference') return val > 0 ? C.redBg : val < 0 ? C.greenBg : C.blueBg;
+      if (mode === 'paid')       return val > 0 ? C.greenBg : [245, 245, 245];
+      if (mode === 'pending')    return val > 0 ? C.goldSoft : C.greenBg;
+      if (mode === 'actual') {
+        if (val > totals.max) return C.redBg;
+        if (val <= totals.min) return C.greenBg;
+        return C.goldSoft;
+      }
+      return C.blueBg;
+    }
+
+    // Draw a color-graded value pill
+    function drawValuePill(doc, text, x, y, mode, val) {
+      var tw = doc.getTextWidth(text) + 14;
+      var pillX = x - tw;
+      drawRoundedRect(doc, pillX, y - 9, tw, 14, 3, valueBg(mode, val), null);
+      doc.setTextColor.apply(doc, valueColor(mode, val));
+      doc.setFont('helvetica', 'bold');
+      doc.text(text, x - 7, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+    }
+
+    // Summary data with colour modes
     var summaryLeft = [
-      ['Minimum Estimate', inr(totals.min)],
-      ['Maximum Estimate', inr(totals.max)],
-      ['Actual Budget', inr(totals.actual)]
+      { label: 'Minimum Estimate', value: inr(totals.min),    mode: 'estimate', raw: totals.min },
+      { label: 'Maximum Estimate', value: inr(totals.max),    mode: 'estimate', raw: totals.max },
+      { label: 'Actual Budget',    value: inr(totals.actual), mode: 'actual',   raw: totals.actual }
     ];
     var summaryRight = [
-      ['Total Paid', inr(totals.paid || 0)],
-      ['Total Pending', inr(totals.pending || 0)],
-      ['Remaining', inr(totals.remaining)]
+      { label: 'Total Paid',    value: inr(totals.paid || 0),    mode: 'paid',      raw: totals.paid || 0 },
+      { label: 'Total Pending', value: inr(totals.pending || 0), mode: 'pending',   raw: totals.pending || 0 },
+      { label: 'Remaining',     value: inr(totals.remaining),    mode: 'remaining', raw: totals.remaining }
     ];
 
     doc.setFont('helvetica', 'normal');
@@ -141,6 +179,8 @@
     var ry = sy + 46;
     var colLeft = mx + 16;
     var colMid = mx + usable / 2 + 10;
+    var pillEndLeft = colLeft + 210;
+    var pillEndRight = colMid + 210;
 
     // Divider line between columns
     doc.setDrawColor.apply(doc, C.lightGray);
@@ -149,32 +189,42 @@
 
     summaryLeft.forEach(function (row, i) {
       doc.setTextColor(80, 90, 105);
-      doc.text(row[0], colLeft, ry + i * 18);
-      doc.setTextColor.apply(doc, C.navy);
-      doc.setFont('helvetica', 'bold');
-      doc.text(row[1], colLeft + 190, ry + i * 18, { align: 'right' });
-      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(row.label, colLeft, ry + i * 20);
+      doc.setFontSize(8.5);
+      if (row.mode === 'estimate') {
+        // Neutral blue pill for estimates
+        drawRoundedRect(doc, pillEndLeft - doc.getTextWidth(row.value) - 14, ry + i * 20 - 9, doc.getTextWidth(row.value) + 14, 14, 3, C.blueBg, null);
+        doc.setTextColor.apply(doc, C.blueText);
+        doc.setFont('helvetica', 'bold');
+        doc.text(row.value, pillEndLeft - 7, ry + i * 20, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+      } else {
+        drawValuePill(doc, row.value, pillEndLeft, ry + i * 20, row.mode, row.raw);
+      }
     });
 
     summaryRight.forEach(function (row, i) {
       doc.setTextColor(80, 90, 105);
-      doc.text(row[0], colMid, ry + i * 18);
-      doc.setTextColor.apply(doc, C.navy);
-      doc.setFont('helvetica', 'bold');
-      doc.text(row[1], colMid + 190, ry + i * 18, { align: 'right' });
-      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(row.label, colMid, ry + i * 20);
+      doc.setFontSize(8.5);
+      drawValuePill(doc, row.value, pillEndRight, ry + i * 20, row.mode, row.raw);
     });
 
-    // Difference vs estimate – highlight chip
+    // Difference vs estimate – highlight chip at bottom of card
     var diffVal = totals.difference;
-    var diffBg   = diffVal >= 0 ? C.greenBg : C.redBg;
-    var diffTxt  = diffVal >= 0 ? C.greenText : C.redText;
+    var diffBg   = diffVal > 0 ? C.redBg : diffVal < 0 ? C.greenBg : C.blueBg;
+    var diffTxt  = diffVal > 0 ? C.redText : diffVal < 0 ? C.greenText : C.blueText;
+    var diffIcon = diffVal > 0 ? '▲' : diffVal < 0 ? '▼' : '●';
     var chipY = sy + cardH - 22;
-    drawRoundedRect(doc, mx + usable - 195, chipY - 8, 180, 18, 4, diffBg, null);
+    var diffStr = diffIcon + ' Diff vs. Estimate: ' + inr(Math.abs(diffVal)) + (diffVal > 0 ? ' over budget' : diffVal < 0 ? ' under budget' : ' on target');
+    var diffTW = doc.getTextWidth(diffStr) + 20;
+    drawRoundedRect(doc, mx + usable - diffTW - 10, chipY - 8, diffTW, 18, 4, diffBg, null);
     doc.setFontSize(8);
     doc.setTextColor.apply(doc, diffTxt);
     doc.setFont('helvetica', 'bold');
-    doc.text('Diff vs. Estimate: ' + inr(Math.abs(diffVal)) + (diffVal >= 0 ? ' over' : ' under'), mx + usable - 190, chipY + 3);
+    doc.text(diffStr, mx + usable - 16, chipY + 3, { align: 'right' });
     doc.setFont('helvetica', 'normal');
 
     // ── Budget Breakdown Table ──
@@ -246,14 +296,35 @@
           data.cell.styles.fontStyle = 'bold';
           data.cell.styles.fontSize = 8;
         }
-        // Status column colour badges
-        if (data.section === 'body' && data.column.index === 7) {
-          var val = (data.cell.raw || '').toLowerCase();
-          if (val === 'booked' || val === 'confirmed') {
-            data.cell.styles.textColor = C.greenText;
-            data.cell.styles.fontStyle = 'bold';
-          } else if (val === 'shortlisted') {
-            data.cell.styles.textColor = C.blueText;
+        if (data.section === 'body') {
+          // Actual column – red if over max category estimate
+          if (data.column.index === 3) {
+            var cat = categories[data.row.index];
+            if (cat && cat.actual > cat.max) {
+              data.cell.styles.textColor = C.redText;
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+          // Paid column – green if paid, gray if zero
+          if (data.column.index === 4) {
+            var rawText = (data.cell.raw || '').replace(/[^0-9]/g, '');
+            var paidNum = parseInt(rawText, 10) || 0;
+            if (paidNum > 0) {
+              data.cell.styles.textColor = C.greenText;
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.textColor = C.midGray;
+            }
+          }
+          // Status column colour badges
+          if (data.column.index === 7) {
+            var val = (data.cell.raw || '').toLowerCase();
+            if (val === 'booked' || val === 'confirmed') {
+              data.cell.styles.textColor = C.greenText;
+              data.cell.styles.fontStyle = 'bold';
+            } else if (val === 'shortlisted') {
+              data.cell.styles.textColor = C.blueText;
+            }
           }
         }
       },
