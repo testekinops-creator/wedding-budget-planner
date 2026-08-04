@@ -56,6 +56,16 @@
   var contribSave = document.getElementById('contribSave');
   var contributorNameInput = document.getElementById('contributorNameInput');
 
+  // Add Category modal
+  var categoryModal = document.getElementById('categoryModal');
+  var addCategoryBtn = document.getElementById('addCategoryBtn');
+  var catModalCancel = document.getElementById('catModalCancel');
+  var catModalSave = document.getElementById('catModalSave');
+  var newCatName = document.getElementById('newCatName');
+  var newCatDesc = document.getElementById('newCatDesc');
+  var newCatMin = document.getElementById('newCatMin');
+  var newCatMax = document.getElementById('newCatMax');
+
   // Receipt lightbox
   var receiptLightbox = document.getElementById('receiptLightbox');
   var lightboxClose = document.getElementById('lightboxClose');
@@ -1055,6 +1065,51 @@
     contributorModal.classList.remove('show');
     renderAll();
     showToast('Contributor "' + name + '" added ✓');
+  });
+
+  // ---- Add Category modal ----
+  addCategoryBtn.addEventListener('click', function () {
+    newCatName.value = '';
+    newCatDesc.value = '';
+    newCatMin.value = '';
+    newCatMax.value = '';
+    categoryModal.classList.add('show');
+    setTimeout(function () { newCatName.focus(); }, 100);
+  });
+
+  catModalCancel.addEventListener('click', function () {
+    categoryModal.classList.remove('show');
+  });
+
+  categoryModal.addEventListener('click', function (e) {
+    if (e.target === categoryModal) categoryModal.classList.remove('show');
+  });
+
+  catModalSave.addEventListener('click', function () {
+    var name = newCatName.value.trim();
+    if (!name) { showToast('Please enter a category name.'); return; }
+    var desc = newCatDesc.value.trim() || '';
+    var minVal = parseFloat(newCatMin.value) || 0;
+    var maxVal = parseFloat(newCatMax.value) || 0;
+    if (maxVal < minVal) maxVal = minVal;
+
+    var newCat = {
+      id: 'custom-' + Date.now(),
+      name: name,
+      description: desc,
+      min: minVal,
+      max: maxVal,
+      actual: 0,
+      paid: 0,
+      notes: '',
+      contributor: '',
+      vendor: null,
+      receipt: null
+    };
+    categories.push(newCat);
+    categoryModal.classList.remove('show');
+    renderAll();
+    showToast('Category "' + name + '" added ✓');
   });
 
   // ---- Toast ----

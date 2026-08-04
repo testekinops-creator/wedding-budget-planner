@@ -188,6 +188,10 @@
         <option value="unpaid">Least paid</option>
       </select>
     </div>
+    <button class="btn btn-primary-sm add-category-btn" id="addCategoryBtn" title="Add new category">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Add Category
+    </button>
   </section>
 
   <div class="container-grid">
@@ -287,6 +291,41 @@
     <div class="modal-actions">
       <button class="btn btn-outline" id="contribCancel">Cancel</button>
       <button class="btn btn-primary-sm" id="contribSave">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Category modal -->
+<div class="modal-overlay" id="categoryModal">
+  <div class="modal-card">
+    <h3>
+      <svg class="modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Add New Category
+    </h3>
+    <p>Create a custom budget category for your wedding.</p>
+    <div class="modal-form">
+      <div class="field">
+        <label for="newCatName">Category name</label>
+        <input type="text" id="newCatName" class="text-input" placeholder="e.g., DJ & Music" maxlength="40" />
+      </div>
+      <div class="field">
+        <label for="newCatDesc">Description</label>
+        <input type="text" id="newCatDesc" class="text-input" placeholder="e.g., Sound system and DJ for reception" maxlength="100" />
+      </div>
+      <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label for="newCatMin">Min estimate (₹)</label>
+          <input type="number" id="newCatMin" class="text-input" min="0" step="1000" placeholder="0" />
+        </div>
+        <div class="field">
+          <label for="newCatMax">Max estimate (₹)</label>
+          <input type="number" id="newCatMax" class="text-input" min="0" step="1000" placeholder="0" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="catModalCancel">Cancel</button>
+      <button class="btn btn-primary-sm" id="catModalSave">Add Category</button>
     </div>
   </div>
 </div>
