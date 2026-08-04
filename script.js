@@ -547,6 +547,42 @@
     );
   }
 
+  // Live-update badge, progress bar, estimate pill, and footer on a card (no full re-render)
+  function updateCardVisuals(card, cat) {
+    // Badge
+    var badgeEl = card.querySelector('.pay-badge');
+    if (badgeEl) {
+      var newBadge = document.createElement('span');
+      newBadge.innerHTML = paymentStatusBadge(cat);
+      var newSpan = newBadge.querySelector('.pay-badge');
+      if (newSpan) {
+        badgeEl.className = newSpan.className;
+        badgeEl.textContent = newSpan.textContent;
+      }
+    }
+    // Progress bar
+    var progWrap = card.querySelector('.pay-progress');
+    if (progWrap) {
+      progWrap.outerHTML = paymentProgressBar(cat);
+    }
+    // Estimate pill
+    var pill = card.querySelector('.estimate-pill');
+    if (pill) {
+      pill.textContent = formatRange(cat.min, cat.max);
+    }
+    // Footer over/under
+    var foot = card.querySelector('.category-foot');
+    if (foot) {
+      if (cat.actual > cat.max) {
+        foot.innerHTML = '<span class="over">' + formatINR(Math.round(cat.actual - cat.max)) + ' over estimate</span>';
+      } else if (cat.actual < cat.min) {
+        foot.innerHTML = '<span class="under">' + formatINR(Math.round(cat.min - cat.actual)) + ' under estimate</span>';
+      } else {
+        foot.innerHTML = '<span class="under">Within estimate</span>';
+      }
+    }
+  }
+
   function contributorDropdown(cat) {
     var opts = '<option value="">— Select —</option>';
     contributors.forEach(function (name) {
@@ -613,6 +649,22 @@
           '<div class="field">' +
             '<label for="notes-' + cat.id + '">Notes</label>' +
             '<textarea id="notes-' + cat.id + '" data-field="notes" rows="1" placeholder="Optional note…">' + (cat.notes || '') + '</textarea>' +
+          '</div>' +
+        '</div>' +
+
+        // Editable estimated budget
+        '<div class="field-row">' +
+          '<div class="field">' +
+            '<label for="min-' + cat.id + '">Min estimate</label>' +
+            '<div class="input-prefix">' +
+              '<input type="number" min="0" step="1000" id="min-' + cat.id + '" data-field="min" value="' + cat.min + '" />' +
+            '</div>' +
+          '</div>' +
+          '<div class="field">' +
+            '<label for="max-' + cat.id + '">Max estimate</label>' +
+            '<div class="input-prefix">' +
+              '<input type="number" min="0" step="1000" id="max-' + cat.id + '" data-field="max" value="' + cat.max + '" />' +
+            '</div>' +
           '</div>' +
         '</div>' +
 
@@ -683,6 +735,12 @@
     } else if (field === 'paid') {
       var val2 = parseFloat(e.target.value);
       cat.paid = isNaN(val2) ? 0 : Math.max(0, val2);
+    } else if (field === 'min') {
+      var val3 = parseFloat(e.target.value);
+      cat.min = isNaN(val3) ? 0 : Math.max(0, val3);
+    } else if (field === 'max') {
+      var val4 = parseFloat(e.target.value);
+      cat.max = isNaN(val4) ? 0 : Math.max(0, val4);
     } else if (field === 'notes') {
       cat.notes = e.target.value;
     } else if (field === 'contributor') {
@@ -691,6 +749,11 @@
       var vField = field.split('.')[1];
       if (!cat.vendor) cat.vendor = {};
       cat.vendor[vField] = e.target.value;
+    }
+
+    // Live-update visuals on the card (badge, progress, pill, footer)
+    if (field === 'actual' || field === 'paid' || field === 'min' || field === 'max') {
+      updateCardVisuals(card, cat);
     }
     renderTotals();
   });
