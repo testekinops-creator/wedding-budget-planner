@@ -216,15 +216,20 @@
     var diffVal = totals.difference;
     var diffBg   = diffVal > 0 ? C.redBg : diffVal < 0 ? C.greenBg : C.blueBg;
     var diffTxt  = diffVal > 0 ? C.redText : diffVal < 0 ? C.greenText : C.blueText;
-    var diffIcon = diffVal > 0 ? '▲' : diffVal < 0 ? '▼' : '●';
+    var diffIcon = diffVal > 0 ? '\u25B2' : diffVal < 0 ? '\u25BC' : '\u25CF';
     var chipY = sy + cardH - 22;
-    var diffStr = diffIcon + ' Diff vs. Estimate: ' + inr(Math.abs(diffVal)) + (diffVal > 0 ? ' over budget' : diffVal < 0 ? ' under budget' : ' on target');
-    var diffTW = doc.getTextWidth(diffStr) + 20;
-    drawRoundedRect(doc, mx + usable - diffTW - 10, chipY - 8, diffTW, 18, 4, diffBg, null);
     doc.setFontSize(8);
-    doc.setTextColor.apply(doc, diffTxt);
     doc.setFont('helvetica', 'bold');
-    doc.text(diffStr, mx + usable - 16, chipY + 3, { align: 'right' });
+    var diffStr = diffIcon + ' Diff vs. Estimate: ' + inr(Math.abs(diffVal)) + (diffVal > 0 ? ' over budget' : diffVal < 0 ? ' under budget' : ' on target');
+    var diffTW = doc.getTextWidth(diffStr) + 16;
+    // Clamp chip to fit within card
+    var maxChipW = usable - 20;
+    if (diffTW > maxChipW) diffTW = maxChipW;
+    var chipX = mx + usable - diffTW - 10;
+    if (chipX < mx + 10) chipX = mx + 10;
+    drawRoundedRect(doc, chipX, chipY - 8, diffTW, 18, 4, diffBg, null);
+    doc.setTextColor.apply(doc, diffTxt);
+    doc.text(diffStr, chipX + 8, chipY + 3);
     doc.setFont('helvetica', 'normal');
 
     // ── Budget Breakdown Table ──
