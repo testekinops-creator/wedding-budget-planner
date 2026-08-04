@@ -236,6 +236,20 @@
     return { score: score, label: label, color: color };
   }
 
+  // ── SVG icon helpers (consistent: 16×16, stroke 1.8, round caps) ──
+  var SVG = {
+    pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-5.6 11.2L12 22l5.6-8.8A7 7 0 0 0 12 2z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+    flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c-4.4 0-8-3.6-8-8 0-5 4-8 6-10 .7 2.3 3 4 4.5 4.5C16 9 18 11 18 14c0 4.4-2.7 8-6 8z"/><path d="M12 22c-1.7 0-3-1.8-3-4 0-2 1.5-3 2-4 .3 1 1.3 2 2 2 .7 0 2 1 2 2s-1.3 4-3 4z"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.2 1.6 18a2 2 0 0 0 1.7 3h17.4a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    coins: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.1 10.3A6 6 0 0 1 16 21.7"/><path d="M14 11.5a6 6 0 0 1 4 5.7"/></svg>',
+    sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5H18l-3.7 2.8 1.4 4.5L12 12l-3.7 2.8 1.4-4.5L6 7.5h4.5z"/></svg>',
+    vendor: '<svg class="vendor-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h6M8 15h4"/></svg>',
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.4 2.1L8 9.7a16 16 0 0 0 6.3 6.3l1.3-1.3a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.7a2 2 0 0 1 1.7 2z"/></svg>'
+  };
+
   function generateInsights(cats, totals) {
     var insights = [];
 
@@ -245,7 +259,7 @@
       var biggest = sorted[0];
       var bigPct = pct(biggest.actual, totals.actual);
       insights.push({
-        icon: '📌',
+        icon: SVG.pin,
         text: biggest.name + ' is your biggest spend at ' + bigPct + '% of total budget.'
       });
     }
@@ -257,7 +271,7 @@
       if (catActual > catMax && catMax > 0) {
         var overAmt = catActual - catMax;
         insights.push({
-          icon: '🔥',
+          icon: SVG.flame,
           text: c.name + ' is ' + formatINR(overAmt) + ' over estimate — consider trimming.'
         });
       }
@@ -270,7 +284,7 @@
       if (catActual < catMin && catActual > 0 && catMin > 0) {
         var savings = catMin - catActual;
         insights.push({
-          icon: '✅',
+          icon: SVG.check,
           text: c.name + ' is ' + formatINR(savings) + ' under estimate — great saving!'
         });
       }
@@ -280,7 +294,7 @@
     var unpaid = cats.filter(function (c) { return (Number(c.actual) || 0) > 0 && (Number(c.paid) || 0) === 0; });
     if (unpaid.length > 0) {
       insights.push({
-        icon: '⚠️',
+        icon: SVG.warning,
         text: unpaid.length + ' categor' + (unpaid.length === 1 ? 'y has' : 'ies have') + ' actual costs but no payments recorded.'
       });
     }
@@ -289,7 +303,7 @@
     var zeroActual = cats.filter(function (c) { return (Number(c.actual) || 0) === 0; });
     if (zeroActual.length > 0) {
       insights.push({
-        icon: '📝',
+        icon: SVG.edit,
         text: zeroActual.length + ' categor' + (zeroActual.length === 1 ? 'y has' : 'ies have') + ' no actual cost entered — update for accuracy.'
       });
     }
@@ -297,18 +311,18 @@
     // Overall budget status
     if (totals.remaining < 0) {
       insights.push({
-        icon: '🚨',
+        icon: SVG.alert,
         text: 'You are ' + formatINR(Math.abs(totals.remaining)) + ' over your maximum budget!'
       });
     } else if (totals.remaining > 0 && totals.actual > 0) {
       insights.push({
-        icon: '💰',
+        icon: SVG.coins,
         text: 'You have ' + formatINR(totals.remaining) + ' remaining in your budget.'
       });
     }
 
     if (insights.length === 0) {
-      insights.push({ icon: '✨', text: 'Your budget looks great! Keep tracking as you finalize vendors.' });
+      insights.push({ icon: SVG.sparkle, text: 'Your budget looks great! Keep tracking as you finalize vendors.' });
     }
 
     return insights.slice(0, 6); // max 6 insights
@@ -331,7 +345,7 @@
     var insights = generateInsights(cats, totals);
     var insightsList = document.getElementById('insightsList');
     insightsList.innerHTML = insights.map(function (ins) {
-      return '<div class="insight-item"><span class="insight-icon">' + ins.icon + '</span><span>' + ins.text + '</span></div>';
+      return '<div class="insight-item"><div class="insight-icon">' + ins.icon + '</div><span>' + ins.text + '</span></div>';
     }).join('');
   }
 
@@ -609,13 +623,13 @@
 
         // Vendor details expandable (Feature 5)
         '<details class="vendor-details">' +
-          '<summary class="vendor-toggle">📇 Vendor Details' + (vendorName ? ' — <strong>' + vendorName + '</strong>' : '') + '</summary>' +
+          '<summary class="vendor-toggle">' + SVG.vendor + ' Vendor Details' + (vendorName ? ' — <strong>' + vendorName + '</strong>' : '') + '</summary>' +
           '<div class="vendor-grid">' +
             '<div class="field"><label for="vname-' + cat.id + '">Vendor name</label>' +
               '<input type="text" id="vname-' + cat.id + '" data-field="vendor.name" value="' + vendorName + '" placeholder="Name" /></div>' +
             '<div class="field"><label for="vphone-' + cat.id + '">Phone</label>' +
               '<input type="text" id="vphone-' + cat.id + '" data-field="vendor.phone" value="' + vendorPhone + '" placeholder="Phone" />' +
-              (vendorPhone ? '<a href="tel:' + vendorPhone + '" class="vendor-call-link">📞 Call</a>' : '') +
+              (vendorPhone ? '<a href="tel:' + vendorPhone + '" class="vendor-call-link">' + SVG.phone + ' Call</a>' : '') +
             '</div>' +
             '<div class="field"><label for="vemail-' + cat.id + '">Email</label>' +
               '<input type="text" id="vemail-' + cat.id + '" data-field="vendor.email" value="' + vendorEmail + '" placeholder="Email" /></div>' +
@@ -795,11 +809,11 @@
       var now = new Date();
       var diff = weddingDate.getTime() - now.getTime();
       if (diff <= 0) {
-        document.getElementById('cdDays').textContent = '🎉';
+        document.getElementById('cdDays').textContent = '00';
         document.getElementById('cdHours').textContent = '';
         document.getElementById('cdMinutes').textContent = '';
         document.getElementById('cdSeconds').textContent = '';
-        document.getElementById('countdownDate').textContent = 'Today is the day! Congratulations! 🎊';
+        document.getElementById('countdownDate').textContent = 'Today is the day! Congratulations!';
         stopCountdown();
         return;
       }
@@ -843,7 +857,7 @@
     persistWeddingDate();
     startCountdown();
     dateModal.classList.remove('show');
-    showToast('Wedding date set! 💍');
+    showToast('Wedding date set!');
   });
 
   dateClear.addEventListener('click', function () {
@@ -992,7 +1006,7 @@
     persistMilestones();
     persistContributors();
     renderTotals();
-    showToast('Wedding Budget Saved Successfully ✨');
+    showToast('Wedding Budget Saved Successfully');
   });
 
   resetBtn.addEventListener('click', function () {
