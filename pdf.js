@@ -22,6 +22,11 @@
     return 'Rs. ' + Math.round(n).toLocaleString('en-IN');
   }
 
+  // Number-only format (no Rs. prefix) — used for table cells and summary pills
+  function num(n) {
+    return Math.round(n).toLocaleString('en-IN');
+  }
+
   /* ── Colour palette ────────────────────────────────────── */
   var C = {
     navy:       [10, 37, 69],
@@ -162,25 +167,26 @@
       doc.setFont('helvetica', 'normal');
     }
 
-    // Summary data with colour modes
+    // Summary data with colour modes (no Rs. prefix — just numbers)
     var summaryLeft = [
-      { label: 'Minimum Estimate', value: inr(totals.min),    mode: 'estimate', raw: totals.min },
-      { label: 'Maximum Estimate', value: inr(totals.max),    mode: 'estimate', raw: totals.max },
-      { label: 'Actual Budget',    value: inr(totals.actual), mode: 'actual',   raw: totals.actual }
+      { label: 'Minimum Estimate', value: num(totals.min),    mode: 'estimate', raw: totals.min },
+      { label: 'Maximum Estimate', value: num(totals.max),    mode: 'estimate', raw: totals.max },
+      { label: 'Actual Budget',    value: num(totals.actual), mode: 'actual',   raw: totals.actual }
     ];
     var summaryRight = [
-      { label: 'Total Paid',    value: inr(totals.paid || 0),    mode: 'paid',      raw: totals.paid || 0 },
-      { label: 'Total Pending', value: inr(totals.pending || 0), mode: 'pending',   raw: totals.pending || 0 },
-      { label: 'Remaining',     value: inr(totals.remaining),    mode: 'remaining', raw: totals.remaining }
+      { label: 'Total Paid',    value: num(totals.paid || 0),    mode: 'paid',      raw: totals.paid || 0 },
+      { label: 'Total Pending', value: num(totals.pending || 0), mode: 'pending',   raw: totals.pending || 0 },
+      { label: 'Remaining',     value: num(totals.remaining),    mode: 'remaining', raw: totals.remaining }
     ];
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     var ry = sy + 46;
     var colLeft = mx + 16;
-    var colMid = mx + usable / 2 + 10;
-    var pillEndLeft = colLeft + 210;
-    var pillEndRight = colMid + 210;
+    var halfW = usable / 2;
+    var colMid = mx + halfW + 10;
+    var pillEndLeft = mx + halfW - 10;
+    var pillEndRight = mx + usable - 10;
 
     // Divider line between columns
     doc.setDrawColor.apply(doc, C.lightGray);
@@ -220,7 +226,7 @@
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     var diffLabel = diffVal > 0 ? 'Over Budget' : diffVal < 0 ? 'Under Budget' : 'On Target';
-    var diffStr = 'Diff vs Estimate:  ' + inr(Math.abs(diffVal)) + '  (' + diffLabel + ')';
+    var diffStr = 'Diff vs Estimate:  ' + num(Math.abs(diffVal)) + '  (' + diffLabel + ')';
     var diffTW = doc.getTextWidth(diffStr) + 18;
     // Center the chip within the card
     var chipX = mx + (usable - diffTW) / 2;
@@ -242,10 +248,10 @@
         : '-';
       return [
         sanitize(c.name),
-        inr(c.min),
-        inr(c.max),
-        inr(c.actual),
-        inr(c.paid || 0),
+        num(c.min),
+        num(c.max),
+        num(c.actual),
+        num(c.paid || 0),
         sanitize(c.contributor || '-'),
         vendorName,
         vendorStatus
@@ -285,14 +291,14 @@
         fillColor: [245, 247, 252]
       },
       columnStyles: {
-        0: { cellWidth: 82, fontStyle: 'bold' },
-        1: { cellWidth: 56, halign: 'right' },
-        2: { cellWidth: 56, halign: 'right' },
-        3: { cellWidth: 62, halign: 'right' },
-        4: { cellWidth: 56, halign: 'right' },
-        5: { cellWidth: 55 },
-        6: { cellWidth: 70 },
-        7: { cellWidth: 48 }
+        0: { cellWidth: 80, fontStyle: 'bold' },
+        1: { cellWidth: 60, halign: 'right' },
+        2: { cellWidth: 60, halign: 'right' },
+        3: { cellWidth: 65, halign: 'right' },
+        4: { cellWidth: 60, halign: 'right' },
+        5: { cellWidth: 52 },
+        6: { cellWidth: 65 },
+        7: { cellWidth: 43 }
       },
       didParseCell: function (data) {
         // Grand Total row styling
