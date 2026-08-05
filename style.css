@@ -220,10 +220,6 @@ button { font-family: var(--font-body); cursor: pointer; }
 .hero-title-row { display: flex; flex-direction: column; gap: 10px; }
 
 /* Hero entrance animations */
-.hero-title-row .eyebrow {
-  animation: fadeInUp 0.7s cubic-bezier(.4, 0, .2, 1) 0.1s both, spinStar 4s ease-in-out infinite;
-}
-
 .hero-title-row h1 {
   animation: fadeInUp 0.7s cubic-bezier(.4, 0, .2, 1) 0.25s both, shimmerText 4s ease-in-out infinite;
 }
