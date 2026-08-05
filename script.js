@@ -258,7 +258,8 @@
     sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5H18l-3.7 2.8 1.4 4.5L12 12l-3.7 2.8 1.4-4.5L6 7.5h4.5z"/></svg>',
     vendor: '<svg class="vendor-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h6M8 15h4"/></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.4 2.1L8 9.7a16 16 0 0 0 6.3 6.3l1.3-1.3a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.7a2 2 0 0 1 1.7 2z"/></svg>',
-    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>'
   };
 
   function generateInsights(cats, totals) {
@@ -639,6 +640,7 @@
           '<div class="category-head-right">' +
             paymentStatusBadge(cat) +
             '<span class="estimate-pill">' + formatRange(cat.min, cat.max) + '</span>' +
+            '<button class="card-delete-btn" data-id="' + cat.id + '" title="Delete category">' + SVG.trash + '</button>' +
             '<button class="card-toggle-btn" title="Expand / Collapse">' + SVG.chevron + '</button>' +
           '</div>' +
         '</div>' +
@@ -838,7 +840,45 @@
     var btn = e.target.closest('.card-toggle-btn');
     if (!btn) return;
     var card = btn.closest('.category-card');
-    if (card) card.classList.toggle('collapsed');
+    if (card) {
+      card.classList.toggle('collapsed');
+      // After collapsing, cards below may enter the viewport — trigger reveal
+      setTimeout(function () { triggerReveals(); }, 350);
+    }
+  });
+
+  // ---- Delete Category ----
+  listEl.addEventListener('click', function (e) {
+    var delBtn = e.target.closest('.card-delete-btn');
+    if (!delBtn) return;
+    e.stopPropagation();
+    var catId = delBtn.getAttribute('data-id');
+    var cat = categories.find(function (c) { return c.id === catId; });
+    if (!cat) return;
+
+    // Confirm deletion
+    var card = delBtn.closest('.category-card');
+    if (!confirm('Delete "' + cat.name + '"? This will also remove linked milestones.')) return;
+
+    // Animate card removal
+    if (card) {
+      card.style.transition = 'all 0.35s ease';
+      card.style.transform = 'scale(0.95) translateX(30px)';
+      card.style.opacity = '0';
+    }
+
+    setTimeout(function () {
+      // Remove category
+      categories = categories.filter(function (c) { return c.id !== catId; });
+
+      // Remove orphaned milestones linked to this category
+      milestones = milestones.filter(function (ms) { return ms.categoryId !== catId; });
+      persistMilestones();
+
+      // Re-render everything
+      renderAll();
+      showToast('"' + cat.name + '" deleted');
+    }, 350);
   });
 
   listEl.addEventListener('blur', function (e) {
@@ -851,25 +891,48 @@
   }, true);
 
   // ---- Milestones (Feature 3) ----
+  function getCategoryNameById(catId) {
+    if (!catId) return '';
+    var cat = categories.find(function (c) { return c.id === catId; });
+    return cat ? cat.name : '';
+  }
+
   function renderMilestones() {
     var el = document.getElementById('milestoneTimeline');
     if (!el) return;
     el.innerHTML = milestones.map(function (ms, i) {
       var cls = ms.done ? 'milestone done' : 'milestone';
+      var catName = getCategoryNameById(ms.categoryId);
+      var catTag = catName
+        ? '<span class="milestone-cat-tag" title="Linked to: ' + catName + '">' + catName + '</span>'
+        : '';
+
       return (
         '<div class="' + cls + '" data-ms-index="' + i + '">' +
           '<div class="milestone-dot"></div>' +
           '<div class="milestone-content">' +
-            '<label class="milestone-label">' +
-              '<input type="checkbox" ' + (ms.done ? 'checked' : '') + ' class="ms-checkbox" data-ms-index="' + i + '" /> ' +
-              '<span>' + ms.label + '</span>' +
-            '</label>' +
+            '<div class="milestone-label-wrap">' +
+              '<label class="milestone-label">' +
+                '<input type="checkbox" ' + (ms.done ? 'checked' : '') + ' class="ms-checkbox" data-ms-index="' + i + '" /> ' +
+                '<span>' + ms.label + '</span>' +
+              '</label>' +
+              catTag +
+            '</div>' +
+            '<div class="milestone-actions">' +
+              '<button class="ms-action-btn ms-edit-btn" data-ms-index="' + i + '" title="Edit">' +
+                SVG.edit +
+              '</button>' +
+              '<button class="ms-action-btn ms-delete-btn" data-ms-index="' + i + '" title="Delete">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+              '</button>' +
+            '</div>' +
           '</div>' +
         '</div>'
       );
     }).join('');
   }
 
+  // Milestone timeline: checkbox toggle
   document.getElementById('milestoneTimeline').addEventListener('change', function (e) {
     if (!e.target.classList.contains('ms-checkbox')) return;
     var idx = parseInt(e.target.getAttribute('data-ms-index'), 10);
@@ -877,6 +940,26 @@
       milestones[idx].done = e.target.checked;
       persistMilestones();
       renderMilestones();
+    }
+  });
+
+  // Milestone timeline: edit + delete click
+  document.getElementById('milestoneTimeline').addEventListener('click', function (e) {
+    var editBtn = e.target.closest('.ms-edit-btn');
+    if (editBtn) {
+      var idx = parseInt(editBtn.getAttribute('data-ms-index'), 10);
+      openMilestoneModal('edit', idx);
+      return;
+    }
+    var deleteBtn = e.target.closest('.ms-delete-btn');
+    if (deleteBtn) {
+      var delIdx = parseInt(deleteBtn.getAttribute('data-ms-index'), 10);
+      if (milestones[delIdx]) {
+        milestones.splice(delIdx, 1);
+        persistMilestones();
+        renderMilestones();
+        showToast('Milestone removed.');
+      }
     }
   });
 
@@ -1107,9 +1190,98 @@
       receipt: null
     };
     categories.push(newCat);
+
+    // Auto-create a milestone linked to this new category
+    milestones.push({
+      id: 'ms-' + newCat.id,
+      label: 'Finalize ' + name,
+      done: false,
+      categoryId: newCat.id
+    });
+    persistMilestones();
+
     categoryModal.classList.remove('show');
     renderAll();
     showToast('Category "' + name + '" added ✓');
+  });
+
+  // ---- Add / Edit Milestone modal ----
+  var milestoneModal = document.getElementById('milestoneModal');
+  var msModalTitle = document.getElementById('msModalTitle');
+  var msLabelInput = document.getElementById('msLabelInput');
+  var msCategorySelect = document.getElementById('msCategorySelect');
+  var msModalCancel = document.getElementById('msModalCancel');
+  var msModalSave = document.getElementById('msModalSave');
+  var addMilestoneBtn = document.getElementById('addMilestoneBtn');
+  var editingMsIndex = -1; // -1 = adding, >= 0 = editing
+
+  function populateMsCategoryDropdown(selectedCatId) {
+    var opts = '<option value="">\u2014 None \u2014</option>';
+    categories.forEach(function (c) {
+      var sel = (c.id === selectedCatId) ? ' selected' : '';
+      opts += '<option value="' + c.id + '"' + sel + '>' + c.name + '</option>';
+    });
+    msCategorySelect.innerHTML = opts;
+  }
+
+  function openMilestoneModal(mode, index) {
+    editingMsIndex = (mode === 'edit' && index >= 0) ? index : -1;
+
+    if (editingMsIndex >= 0) {
+      // Edit mode
+      var ms = milestones[editingMsIndex];
+      msModalTitle.textContent = 'Edit Milestone';
+      msModalSave.textContent = 'Save Changes';
+      msLabelInput.value = ms.label;
+      populateMsCategoryDropdown(ms.categoryId || '');
+    } else {
+      // Add mode
+      msModalTitle.textContent = 'Add Milestone';
+      msModalSave.textContent = 'Add Milestone';
+      msLabelInput.value = '';
+      populateMsCategoryDropdown('');
+    }
+
+    milestoneModal.classList.add('show');
+    setTimeout(function () { msLabelInput.focus(); }, 100);
+  }
+
+  addMilestoneBtn.addEventListener('click', function () {
+    openMilestoneModal('add', -1);
+  });
+
+  msModalCancel.addEventListener('click', function () {
+    milestoneModal.classList.remove('show');
+  });
+
+  milestoneModal.addEventListener('click', function (e) {
+    if (e.target === milestoneModal) milestoneModal.classList.remove('show');
+  });
+
+  msModalSave.addEventListener('click', function () {
+    var label = msLabelInput.value.trim();
+    if (!label) { showToast('Please enter a milestone name.'); return; }
+    var catId = msCategorySelect.value || null;
+
+    if (editingMsIndex >= 0 && milestones[editingMsIndex]) {
+      // Edit existing
+      milestones[editingMsIndex].label = label;
+      milestones[editingMsIndex].categoryId = catId;
+      showToast('Milestone updated ✓');
+    } else {
+      // Add new
+      milestones.push({
+        id: 'ms-custom-' + Date.now(),
+        label: label,
+        done: false,
+        categoryId: catId
+      });
+      showToast('Milestone "' + label + '" added ✓');
+    }
+
+    persistMilestones();
+    milestoneModal.classList.remove('show');
+    renderMilestones();
   });
 
   // ---- Toast ----
@@ -1219,6 +1391,7 @@
   }
 
   window.addEventListener('scroll', triggerReveals, { passive: true });
+  window.addEventListener('resize', triggerReveals, { passive: true });
 
   // ---- Init ----
   function init() {

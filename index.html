@@ -34,7 +34,7 @@
   <div class="hero-glow"></div>
   <div class="hero-inner">
     <div class="hero-title-row">
-      <span class="eyebrow"><svg class="eyebrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5H18l-3.7 2.8 1.4 4.5L12 12l-3.7 2.8 1.4-4.5L6 7.5h4.5z"/></svg> Shaadi Ka Kharcha, Sorted</span>
+      <span class="eyebrow"><svg class="eyebrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5H18l-3.7 2.8 1.4 4.5L12 12l-3.7 2.8 1.4-4.5L6 7.5h4.5z"/></svg> Plan Once, Celebrate Forever ✨</span>
       <h1>Wedding Budget Planner</h1>
       <p>Track every rupee across your ceremonies — estimate, edit, and see your totals update instantly.</p>
     </div>
@@ -147,7 +147,13 @@
 
   <!-- Milestone Timeline (Feature 3) -->
   <section class="timeline-section reveal" aria-label="Wedding milestones">
-    <h2 class="section-title"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7h8M8 12h8M8 17h5"/></svg> Wedding Milestones</h2>
+    <div class="section-title-row">
+      <h2 class="section-title"><svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7h8M8 12h8M8 17h5"/></svg> Wedding Milestones</h2>
+      <button class="add-milestone-btn" id="addMilestoneBtn" title="Add milestone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Add Milestone</span>
+      </button>
+    </div>
     <div class="timeline" id="milestoneTimeline">
       <!-- rendered by script.js -->
     </div>
@@ -326,6 +332,34 @@
     <div class="modal-actions">
       <button class="btn btn-outline" id="catModalCancel">Cancel</button>
       <button class="btn btn-primary-sm" id="catModalSave">Add Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Milestone modal -->
+<div class="modal-overlay" id="milestoneModal">
+  <div class="modal-card">
+    <h3>
+      <svg class="modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7h8M8 12h8M8 17h5"/></svg>
+      <span id="msModalTitle">Add Milestone</span>
+    </h3>
+    <p>Create a task for your wedding checklist, optionally linked to a budget category.</p>
+    <div class="modal-form">
+      <div class="field">
+        <label for="msLabelInput">Milestone name</label>
+        <input type="text" id="msLabelInput" class="text-input" placeholder="e.g., Book photographer" maxlength="60" />
+      </div>
+      <div class="field">
+        <label for="msCategorySelect">Linked category (optional)</label>
+        <select id="msCategorySelect" class="text-input">
+          <option value="">— None —</option>
+          <!-- options populated by script.js -->
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="msModalCancel">Cancel</button>
+      <button class="btn btn-primary-sm" id="msModalSave">Add Milestone</button>
     </div>
   </div>
 </div>
