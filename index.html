@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="style.css?v=5" />
+<link rel="stylesheet" href="style.css?v=6" />
 
 <!-- Signature gold motif SVG -->
 <style>
@@ -113,6 +113,33 @@
     </div>
   </section>
 
+  <!-- Budget Target (P0) -->
+  <section class="budget-target-section reveal" aria-label="Set your total budget">
+    <div class="budget-target-card">
+      <div class="budget-target-left">
+        <div class="budget-target-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h8"/></svg>
+        </div>
+        <div class="budget-target-info">
+          <span class="budget-target-label">Total Wedding Budget</span>
+          <span class="budget-target-hint">Set your overall budget limit to track spending</span>
+        </div>
+      </div>
+      <div class="budget-target-right">
+        <div class="budget-target-input-wrap">
+          <span class="budget-target-prefix">₹</span>
+          <input type="number" id="budgetTargetInput" min="0" step="10000" placeholder="e.g. 15,00,000" aria-label="Total wedding budget" />
+        </div>
+        <div class="budget-target-bar-wrap">
+          <div class="budget-target-bar">
+            <div class="budget-target-bar-fill" id="budgetBarFill" style="width:0%"></div>
+          </div>
+          <span class="budget-target-pct" id="budgetBarPct">0% spent</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Budget Health Score + Smart Insights (Feature 2) -->
   <section class="health-section reveal" aria-label="Budget health score">
     <div class="health-grid">
@@ -182,6 +209,7 @@
     <div class="search-field">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <input type="text" id="searchInput" placeholder="Search categories…" aria-label="Search categories" />
+      <span class="search-count" id="searchCount"></span>
     </div>
     <div class="sort-field">
       <select id="sortSelect" aria-label="Sort categories">
@@ -194,6 +222,10 @@
         <option value="unpaid">Least paid</option>
       </select>
     </div>
+    <button class="btn btn-ghost-sm collapse-all-btn" id="collapseAllBtn" title="Collapse / Expand all cards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 15l5-5 5 5"/></svg>
+      <span id="collapseAllLabel">Collapse All</span>
+    </button>
     <button class="btn btn-primary-sm add-category-btn" id="addCategoryBtn" title="Add new category">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
       Add Category
@@ -222,6 +254,12 @@
       <div class="summary-row"><span>% Budget Utilized</span><span id="sumUtilized">0%</span></div>
       <div class="summary-row total"><span>Remaining</span><span id="sumRemaining">₹0</span></div>
 
+      <!-- Auto-save indicator (P0) -->
+      <div class="autosave-indicator" id="autosaveIndicator">
+        <div class="autosave-dot"></div>
+        <span id="autosaveText">All changes saved</span>
+      </div>
+
       <div class="summary-actions">
         <button class="btn btn-primary" id="saveBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
@@ -239,6 +277,18 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
           PDF
         </button>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="summary-actions summary-actions-secondary">
+        <button class="btn btn-ghost" id="exportBtn" title="Export budget as JSON backup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+        </button>
+        <button class="btn btn-ghost" id="importBtn" title="Import budget from JSON file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Import
+        </button>
+        <input type="file" id="importFileInput" accept=".json" style="display:none" />
       </div>
     </aside>
   </div>
@@ -265,10 +315,30 @@
   <footer class="app-footer">
     <div class="footer-content">
       <span class="footer-brand"><svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.4l7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg> Wedding Budget Planner</span>
-      <span class="footer-note">Your data is saved locally in this browser only.</span>
+      <span class="footer-note">Your data is saved locally in this browser only. <kbd>Ctrl+S</kbd> Save · <kbd>Ctrl+Z</kbd> Undo · <kbd>Esc</kbd> Close</span>
     </div>
   </footer>
 </main>
+
+<!-- Mobile FAB bar (P1) -->
+<div class="mobile-fab" id="mobileFab">
+  <button class="fab-btn" id="fabSave" title="Save">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+    <span>Save</span>
+  </button>
+  <button class="fab-btn" id="fabPdf" title="Export PDF">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+    <span>PDF</span>
+  </button>
+  <button class="fab-btn" id="fabPrint" title="Print">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    <span>Print</span>
+  </button>
+  <button class="fab-btn" id="fabTop" title="Scroll to top">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+    <span>Top</span>
+  </button>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="toast">
@@ -284,6 +354,21 @@
     <div class="modal-actions">
       <button class="btn btn-outline" id="resetCancel">Cancel</button>
       <button class="btn btn-primary-sm" id="resetConfirm" style="background:var(--danger)">Yes, reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete category confirmation modal (P1) -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-card">
+    <h3>
+      <svg class="modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Delete Category
+    </h3>
+    <p id="deleteModalText">Are you sure you want to delete this category? This will also remove any linked milestones.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="deleteCancel">Cancel</button>
+      <button class="btn btn-primary-sm" id="deleteConfirm" style="background:var(--danger)">Yes, delete</button>
     </div>
   </div>
 </div>
@@ -382,9 +467,9 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <!-- App modules -->
-<script src="data.js?v=5"></script>
-<script src="charts.js?v=5"></script>
-<script src="pdf.js?v=5"></script>
-<script src="script.js?v=5"></script>
+<script src="data.js?v=6"></script>
+<script src="charts.js?v=6"></script>
+<script src="pdf.js?v=6"></script>
+<script src="script.js?v=6"></script>
 </body>
 </html>

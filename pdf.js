@@ -117,7 +117,8 @@
 
     // ── Budget Summary ── (inside a card)
     var sy = 105;
-    var cardH = 138;
+    var hasBudgetTarget = totals.budgetTarget && totals.budgetTarget > 0;
+    var cardH = hasBudgetTarget ? 158 : 138;
     drawRoundedRect(doc, mx, sy, usable, cardH, 6, C.offWhite, C.lightGray);
 
     // Card heading
@@ -126,20 +127,30 @@
     doc.setTextColor.apply(doc, C.navy);
     doc.text('Budget Summary', mx + 16, sy + 22);
 
+    // Budget target label if set
+    if (hasBudgetTarget) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor.apply(doc, C.gold);
+      doc.text('Total Budget: ' + inr(totals.budgetTarget), mx + usable - 16, sy + 22, { align: 'right' });
+    }
+
     // Gold mini-line under heading
     goldAccentLine(doc, mx + 16, sy + 28, 40);
 
     // Colour-grading helper for PDF values
+    var refMax = hasBudgetTarget ? totals.budgetTarget : totals.max;
     function valueColor(mode, val) {
       if (mode === 'remaining')  return val < 0 ? C.redText : C.greenText;
       if (mode === 'difference') return val > 0 ? C.redText : val < 0 ? C.greenText : C.navy;
       if (mode === 'paid')       return val > 0 ? C.greenText : C.midGray;
       if (mode === 'pending')    return val > 0 ? [180, 130, 20] : C.greenText;
       if (mode === 'actual') {
-        if (val > totals.max) return C.redText;
+        if (val > refMax) return C.redText;
         if (val <= totals.min) return C.greenText;
         return [180, 130, 20];
       }
+      if (mode === 'budget')     return C.navy;
       return C.navy;
     }
 
@@ -149,10 +160,11 @@
       if (mode === 'paid')       return val > 0 ? C.greenBg : [245, 245, 245];
       if (mode === 'pending')    return val > 0 ? C.goldSoft : C.greenBg;
       if (mode === 'actual') {
-        if (val > totals.max) return C.redBg;
+        if (val > refMax) return C.redBg;
         if (val <= totals.min) return C.greenBg;
         return C.goldSoft;
       }
+      if (mode === 'budget')     return C.goldSoft;
       return C.blueBg;
     }
 
@@ -173,6 +185,9 @@
       { label: 'Maximum Estimate', value: num(totals.max),    mode: 'estimate', raw: totals.max },
       { label: 'Actual Budget',    value: num(totals.actual), mode: 'actual',   raw: totals.actual }
     ];
+    if (hasBudgetTarget) {
+      summaryLeft.unshift({ label: 'Total Budget', value: num(totals.budgetTarget), mode: 'budget', raw: totals.budgetTarget });
+    }
     var summaryRight = [
       { label: 'Total Paid',    value: num(totals.paid || 0),    mode: 'paid',      raw: totals.paid || 0 },
       { label: 'Total Pending', value: num(totals.pending || 0), mode: 'pending',   raw: totals.pending || 0 },

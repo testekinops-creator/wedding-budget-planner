@@ -1,11 +1,20 @@
 /**
  * script.js
- * Full Wedding Budget Planner — all 5 premium features:
+ * Full Wedding Budget Planner — all premium features:
  * 1. Payment Tracker (advance/pending per category)
  * 2. Budget Health Score + Smart Insights
  * 3. Wedding Countdown Timer + Milestones
  * 4. Family Contribution Tracker
  * 5. Vendor Cards with Contact + Receipts
+ * 6. Total Budget Target (P0)
+ * 7. Auto-Save with indicator (P0)
+ * 8. IndexedDB for receipts (P0)
+ * 9. Export/Import JSON (P1)
+ * 10. Custom Delete Modal (P1)
+ * 11. Collapse/Expand All (P2)
+ * 12. Search Results Count (P2)
+ * 13. Keyboard Shortcuts (P2)
+ * 14. Mobile FAB (P1)
  */
 
 (function () {
@@ -14,14 +23,100 @@
   var DATE_KEY = 'weddingBudget:weddingDate';
   var MILESTONES_KEY = 'weddingBudget:milestones';
   var CONTRIBUTORS_KEY = 'weddingBudget:contributors';
+  var BUDGET_KEY = 'weddingBudget:budgetTarget';
 
   var categories = [];
   var milestones = [];
   var contributors = [];
   var weddingDate = null;
+  var budgetTarget = 0;
   var searchTerm = '';
   var sortMode = 'default';
   var countdownInterval = null;
+  var allCollapsed = false;
+  var autoSaveTimer = null;
+  var lastSavedState = '';
+  var deletingCatId = null;
+
+  // ---- IndexedDB Receipt Store (P0) ----
+  var ReceiptStore = (function () {
+    var DB_NAME = 'weddingBudgetReceipts';
+    var STORE_NAME = 'receipts';
+    var DB_VERSION = 1;
+    var dbPromise = null;
+
+    function openDB() {
+      if (dbPromise) return dbPromise;
+      dbPromise = new Promise(function (resolve, reject) {
+        var req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = function (e) {
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME);
+          }
+        };
+        req.onsuccess = function (e) { resolve(e.target.result); };
+        req.onerror = function (e) { reject(e.target.error); };
+      });
+      return dbPromise;
+    }
+
+    function save(catId, base64Data) {
+      return openDB().then(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).put(base64Data, catId);
+          tx.oncomplete = function () { resolve(); };
+          tx.onerror = function (e) { reject(e.target.error); };
+        });
+      });
+    }
+
+    function load(catId) {
+      return openDB().then(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction(STORE_NAME, 'readonly');
+          var req = tx.objectStore(STORE_NAME).get(catId);
+          req.onsuccess = function () { resolve(req.result || ''); };
+          req.onerror = function (e) { reject(e.target.error); };
+        });
+      });
+    }
+
+    function remove(catId) {
+      return openDB().then(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).delete(catId);
+          tx.oncomplete = function () { resolve(); };
+          tx.onerror = function (e) { reject(e.target.error); };
+        });
+      });
+    }
+
+    function getAll() {
+      return openDB().then(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction(STORE_NAME, 'readonly');
+          var store = tx.objectStore(STORE_NAME);
+          var results = {};
+          var req = store.openCursor();
+          req.onsuccess = function (e) {
+            var cursor = e.target.result;
+            if (cursor) {
+              results[cursor.key] = cursor.value;
+              cursor.continue();
+            } else {
+              resolve(results);
+            }
+          };
+          req.onerror = function (e) { reject(e.target.error); };
+        });
+      });
+    }
+
+    return { save: save, load: load, remove: remove, getAll: getAll };
+  })();
 
   // ---- DOM refs ----
   var listEl = document.getElementById('categoryList');
@@ -70,6 +165,39 @@
   var receiptLightbox = document.getElementById('receiptLightbox');
   var lightboxClose = document.getElementById('lightboxClose');
   var lightboxImg = document.getElementById('lightboxImg');
+
+  // Budget Target (P0)
+  var budgetTargetInput = document.getElementById('budgetTargetInput');
+  var budgetBarFill = document.getElementById('budgetBarFill');
+  var budgetBarPct = document.getElementById('budgetBarPct');
+
+  // Auto-save indicator (P0)
+  var autosaveIndicator = document.getElementById('autosaveIndicator');
+  var autosaveText = document.getElementById('autosaveText');
+
+  // Delete modal (P1)
+  var deleteModal = document.getElementById('deleteModal');
+  var deleteModalText = document.getElementById('deleteModalText');
+  var deleteCancel = document.getElementById('deleteCancel');
+  var deleteConfirm = document.getElementById('deleteConfirm');
+
+  // Export/Import (P1)
+  var exportBtn = document.getElementById('exportBtn');
+  var importBtn = document.getElementById('importBtn');
+  var importFileInput = document.getElementById('importFileInput');
+
+  // Collapse All (P2)
+  var collapseAllBtn = document.getElementById('collapseAllBtn');
+  var collapseAllLabel = document.getElementById('collapseAllLabel');
+
+  // Search Count (P2)
+  var searchCount = document.getElementById('searchCount');
+
+  // Mobile FAB (P1)
+  var fabSave = document.getElementById('fabSave');
+  var fabPdf = document.getElementById('fabPdf');
+  var fabPrint = document.getElementById('fabPrint');
+  var fabTop = document.getElementById('fabTop');
 
   // ---- Formatting helpers ----
   function formatINR(n) {
@@ -160,6 +288,70 @@
     }
   }
 
+  // Budget Target persistence (P0)
+  function loadBudgetTarget() {
+    var saved = localStorage.getItem(BUDGET_KEY);
+    return saved ? (parseFloat(saved) || 0) : 0;
+  }
+
+  function persistBudgetTarget() {
+    localStorage.setItem(BUDGET_KEY, String(budgetTarget));
+  }
+
+  // ---- Auto-Save (P0) ----
+  function markUnsaved() {
+    if (autosaveIndicator) {
+      autosaveIndicator.className = 'autosave-indicator unsaved';
+      autosaveText.textContent = 'Unsaved changes';
+    }
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(function () {
+      autoSave();
+    }, 2000);
+  }
+
+  function autoSave() {
+    if (autosaveIndicator) {
+      autosaveIndicator.className = 'autosave-indicator saving';
+      autosaveText.textContent = 'Saving…';
+    }
+    persistState();
+    persistMilestones();
+    persistContributors();
+    persistBudgetTarget();
+    lastSavedState = JSON.stringify(categories);
+    setTimeout(function () {
+      if (autosaveIndicator) {
+        autosaveIndicator.className = 'autosave-indicator';
+        autosaveText.textContent = 'All changes saved';
+      }
+    }, 600);
+  }
+
+  // Migrate old base64 receipts from localStorage/categories to IndexedDB
+  function migrateReceipts() {
+    var migrated = false;
+    var promises = [];
+    categories.forEach(function (c) {
+      if (c.receipt && c.receipt.indexOf('data:') === 0) {
+        // Old base64 receipt — move to IndexedDB
+        promises.push(
+          ReceiptStore.save(c.id, c.receipt).then(function () {
+            c.receipt = 'idb:' + c.id;
+            migrated = true;
+          })
+        );
+      }
+    });
+    if (promises.length > 0) {
+      Promise.all(promises).then(function () {
+        if (migrated) persistState();
+      }).catch(function (err) {
+        console.error('Receipt migration failed:', err);
+      });
+    }
+  }
+
   function loadTheme() {
     var saved = localStorage.getItem(THEME_KEY);
     var theme = saved === 'dark' ? 'dark' : 'light';
@@ -191,10 +383,11 @@
 
     totals.estimatedAvg = (totals.min + totals.max) / 2;
     totals.difference = totals.actual - totals.estimatedAvg;
-    totals.remaining = totals.max - totals.actual;
+    totals.remaining = budgetTarget > 0 ? budgetTarget - totals.actual : totals.max - totals.actual;
     totals.pending = totals.actual - totals.paid;
     totals.variancePct = totals.estimatedAvg ? (totals.difference / totals.estimatedAvg) * 100 : 0;
     totals.utilizedPct = totals.actual ? (totals.paid / totals.actual) * 100 : 0;
+    totals.budgetTarget = budgetTarget;
     totals.count = cats.length;
     return totals;
   }
@@ -433,6 +626,9 @@
       applyStatCardAccent(statCards[4], totals.pending > 0 ? 'accent-amber' : 'accent-green'); // Pending
     }
 
+    // Budget Target bar (P0)
+    renderBudgetBar(totals);
+
     // Summary panel — estimates
     var sumMinEl = document.getElementById('sumMin');
     sumMinEl.textContent = formatINR(totals.min);
@@ -445,7 +641,8 @@
     var sumActualEl = document.getElementById('sumActual');
     sumActualEl.textContent = formatINR(totals.actual);
     // Actual: red if over max, green if under min, amber if in range
-    if (totals.actual > totals.max) {
+    var refMax = budgetTarget > 0 ? budgetTarget : totals.max;
+    if (totals.actual > refMax) {
       sumActualEl.classList.remove('val-positive', 'val-warning', 'val-info', 'val-neutral');
       sumActualEl.classList.add('val-negative');
     } else if (totals.actual <= totals.min) {
@@ -496,6 +693,31 @@
     renderContributions();
 
     return totals;
+  }
+
+  // ---- Budget Target Bar (P0) ----
+  function renderBudgetBar(totals) {
+    if (!budgetBarFill || !budgetBarPct) return;
+    if (budgetTarget <= 0) {
+      budgetBarFill.style.width = '0%';
+      budgetBarPct.textContent = 'Set a budget above';
+      budgetBarFill.className = 'budget-target-bar-fill';
+      return;
+    }
+    var pctSpent = Math.round((totals.actual / budgetTarget) * 100);
+    var barWidth = Math.min(pctSpent, 100);
+    budgetBarFill.style.width = barWidth + '%';
+
+    if (pctSpent > 100) {
+      budgetBarPct.textContent = pctSpent + '% spent (' + formatINR(totals.actual - budgetTarget) + ' over)';
+      budgetBarFill.className = 'budget-target-bar-fill over-budget';
+    } else if (pctSpent > 80) {
+      budgetBarPct.textContent = pctSpent + '% spent';
+      budgetBarFill.className = 'budget-target-bar-fill warning';
+    } else {
+      budgetBarPct.textContent = pctSpent + '% spent';
+      budgetBarFill.className = 'budget-target-bar-fill';
+    }
   }
 
   // ---- Rendering: category cards (with payment tracker + vendor + receipts) ----
@@ -722,6 +944,10 @@
 
   function renderList() {
     var visible = getVisibleCategories();
+
+    // Update search count (P2)
+    updateSearchCount(visible.length, categories.length);
+
     if (!visible.length) {
       listEl.innerHTML = '<div class="empty-state">No categories match your search.</div>';
       return;
@@ -735,6 +961,17 @@
     renderTotals();
     renderMilestones();
     renderContributorTags();
+  }
+
+  // ---- Search Count (P2) ----
+  function updateSearchCount(shown, total) {
+    if (!searchCount) return;
+    if (searchTerm.trim()) {
+      searchCount.textContent = shown + ' of ' + total;
+      searchCount.classList.add('visible');
+    } else {
+      searchCount.classList.remove('visible');
+    }
   }
 
   // ---- Event delegation for card inputs ----
@@ -773,6 +1010,7 @@
       updateCardVisuals(card, cat);
     }
     renderTotals();
+    markUnsaved(); // P0: trigger auto-save
   });
 
   // Handle change events (selects)
@@ -794,7 +1032,7 @@
     }
   });
 
-  // Receipt upload
+  // Receipt upload (P0: uses IndexedDB)
   listEl.addEventListener('change', function (e) {
     if (!e.target.classList.contains('receipt-input')) return;
     var card = e.target.closest('.category-card');
@@ -803,26 +1041,50 @@
     if (!cat || !e.target.files || !e.target.files[0]) return;
 
     var file = e.target.files[0];
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Receipt image must be under 2 MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Receipt image must be under 5 MB.');
       return;
     }
     var reader = new FileReader();
     reader.onload = function (ev) {
-      cat.receipt = ev.target.result;
-      renderList();
-      showToast('Receipt uploaded ✓');
+      var base64Data = ev.target.result;
+      // Store in IndexedDB instead of localStorage
+      ReceiptStore.save(id, base64Data).then(function () {
+        cat.receipt = 'idb:' + id;
+        renderList();
+        showToast('Receipt uploaded ✓');
+        markUnsaved();
+      }).catch(function (err) {
+        console.error('Failed to save receipt:', err);
+        // Fallback: store inline (old behavior)
+        cat.receipt = base64Data;
+        renderList();
+        showToast('Receipt uploaded (local) ✓');
+        markUnsaved();
+      });
     };
     reader.readAsDataURL(file);
   });
 
-  // Receipt lightbox
+  // Receipt lightbox (P0: loads from IndexedDB)
   listEl.addEventListener('click', function (e) {
     var thumb = e.target.closest('.receipt-thumb');
     if (!thumb) return;
     var id = thumb.getAttribute('data-id');
     var cat = categories.find(function (c) { return c.id === id; });
-    if (cat && cat.receipt) {
+    if (!cat || !cat.receipt) return;
+
+    if (cat.receipt.indexOf('idb:') === 0) {
+      // Load from IndexedDB
+      ReceiptStore.load(id).then(function (data) {
+        if (data) {
+          lightboxImg.src = data;
+          receiptLightbox.classList.add('show');
+        } else {
+          showToast('Receipt not found.');
+        }
+      });
+    } else {
       lightboxImg.src = cat.receipt;
       receiptLightbox.classList.add('show');
     }
@@ -847,7 +1109,7 @@
     }
   });
 
-  // ---- Delete Category ----
+  // ---- Delete Category (P1: Custom Modal) ----
   listEl.addEventListener('click', function (e) {
     var delBtn = e.target.closest('.card-delete-btn');
     if (!delBtn) return;
@@ -856,11 +1118,36 @@
     var cat = categories.find(function (c) { return c.id === catId; });
     if (!cat) return;
 
-    // Confirm deletion
-    var card = delBtn.closest('.category-card');
-    if (!confirm('Delete "' + cat.name + '"? This will also remove linked milestones.')) return;
+    // Show custom delete modal instead of confirm()
+    deletingCatId = catId;
+    deleteModalText.textContent = 'Delete "' + cat.name + '"? This will also remove any linked milestones. This action cannot be undone.';
+    deleteModal.classList.add('show');
+  });
+
+  // Delete modal handlers
+  deleteCancel.addEventListener('click', function () {
+    deleteModal.classList.remove('show');
+    deletingCatId = null;
+  });
+
+  deleteModal.addEventListener('click', function (e) {
+    if (e.target === deleteModal) {
+      deleteModal.classList.remove('show');
+      deletingCatId = null;
+    }
+  });
+
+  deleteConfirm.addEventListener('click', function () {
+    deleteModal.classList.remove('show');
+    if (!deletingCatId) return;
+
+    var catId = deletingCatId;
+    var cat = categories.find(function (c) { return c.id === catId; });
+    var catName = cat ? cat.name : 'Category';
+    deletingCatId = null;
 
     // Animate card removal
+    var card = listEl.querySelector('.category-card[data-id="' + catId + '"]');
     if (card) {
       card.style.transition = 'all 0.35s ease';
       card.style.transform = 'scale(0.95) translateX(30px)';
@@ -868,6 +1155,9 @@
     }
 
     setTimeout(function () {
+      // Remove receipt from IndexedDB
+      ReceiptStore.remove(catId).catch(function () {});
+
       // Remove category
       categories = categories.filter(function (c) { return c.id !== catId; });
 
@@ -877,7 +1167,8 @@
 
       // Re-render everything
       renderAll();
-      showToast('"' + cat.name + '" deleted');
+      showToast('"' + catName + '" deleted');
+      markUnsaved();
     }, 350);
   });
 
@@ -966,7 +1257,7 @@
   // ---- Countdown Timer (Feature 3) ----
   function startCountdown() {
     stopCountdown();
-    if (!weddingDate) {
+    if (!weddingDate || isNaN(weddingDate.getTime())) {
       countdownBanner.style.display = 'none';
       return;
     }
@@ -1300,7 +1591,7 @@
     });
   }
 
-  saveBtn.addEventListener('click', function () {
+  function doSave() {
     if (!validateAll()) {
       showToast('Please enter valid, non-negative amounts before saving.');
       return;
@@ -1308,9 +1599,17 @@
     persistState();
     persistMilestones();
     persistContributors();
+    persistBudgetTarget();
+    lastSavedState = JSON.stringify(categories);
+    if (autosaveIndicator) {
+      autosaveIndicator.className = 'autosave-indicator';
+      autosaveText.textContent = 'All changes saved';
+    }
     renderTotals();
     showToast('Wedding Budget Saved Successfully');
-  });
+  }
+
+  saveBtn.addEventListener('click', doSave);
 
   resetBtn.addEventListener('click', function () {
     resetModal.classList.add('show');
@@ -1347,6 +1646,152 @@
     renderList();
   });
 
+  // ---- Budget Target Input (P0) ----
+  budgetTargetInput.addEventListener('input', function (e) {
+    var val = parseFloat(e.target.value);
+    budgetTarget = isNaN(val) ? 0 : Math.max(0, val);
+    renderTotals();
+    markUnsaved();
+  });
+
+  // ---- Collapse / Expand All (P2) ----
+  collapseAllBtn.addEventListener('click', function () {
+    allCollapsed = !allCollapsed;
+    var cards = listEl.querySelectorAll('.category-card');
+    cards.forEach(function (card) {
+      if (allCollapsed) {
+        card.classList.add('collapsed');
+      } else {
+        card.classList.remove('collapsed');
+      }
+    });
+    collapseAllLabel.textContent = allCollapsed ? 'Expand All' : 'Collapse All';
+    collapseAllBtn.classList.toggle('expanded', allCollapsed);
+    setTimeout(function () { triggerReveals(); }, 350);
+  });
+
+  // ---- Export JSON (P1) ----
+  exportBtn.addEventListener('click', function () {
+    var exportData = {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      categories: categories,
+      milestones: milestones,
+      contributors: contributors,
+      budgetTarget: budgetTarget,
+      weddingDate: weddingDate ? weddingDate.toISOString() : null
+    };
+
+    var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'wedding-budget-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Budget exported as JSON ✓');
+  });
+
+  // ---- Import JSON (P1) ----
+  importBtn.addEventListener('click', function () {
+    importFileInput.click();
+  });
+
+  importFileInput.addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      try {
+        var data = JSON.parse(ev.target.result);
+        if (!data.categories || !Array.isArray(data.categories)) {
+          showToast('Invalid budget file — missing categories.');
+          return;
+        }
+
+        // Validate and import
+        categories = data.categories;
+        categories.forEach(function (c) {
+          if (c.paid === undefined) c.paid = 0;
+          if (!c.contributor) c.contributor = '';
+          if (!c.vendor) c.vendor = { name: '', phone: '', email: '', status: 'shortlisted' };
+          if (c.receipt === undefined) c.receipt = '';
+        });
+
+        if (data.milestones && Array.isArray(data.milestones)) {
+          milestones = data.milestones;
+        }
+        if (data.contributors && Array.isArray(data.contributors)) {
+          contributors = data.contributors;
+        }
+        if (data.budgetTarget !== undefined) {
+          budgetTarget = parseFloat(data.budgetTarget) || 0;
+          budgetTargetInput.value = budgetTarget > 0 ? budgetTarget : '';
+        }
+        if (data.weddingDate) {
+          var d = new Date(data.weddingDate);
+          if (!isNaN(d.getTime())) {
+            weddingDate = d;
+            persistWeddingDate();
+            startCountdown();
+          }
+        }
+
+        renderAll();
+        autoSave();
+        showToast('Budget imported successfully ✓');
+      } catch (err) {
+        console.error('Import error:', err);
+        showToast('Failed to import — invalid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be re-imported
+    importFileInput.value = '';
+  });
+
+  // ---- Mobile FAB (P1) ----
+  if (fabSave) fabSave.addEventListener('click', doSave);
+  if (fabPdf) fabPdf.addEventListener('click', function () { pdfBtn.click(); });
+  if (fabPrint) fabPrint.addEventListener('click', function () { window.print(); });
+  if (fabTop) fabTop.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ---- Keyboard Shortcuts (P2) ----
+  document.addEventListener('keydown', function (e) {
+    // Ctrl+S — Save
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      doSave();
+    }
+    // Ctrl+Z — Undo (restore last saved state)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      if (lastSavedState) {
+        try {
+          var restored = JSON.parse(lastSavedState);
+          if (Array.isArray(restored)) {
+            categories = restored;
+            renderAll();
+            showToast('Reverted to last saved state');
+          }
+        } catch (err) { /* ignore */ }
+      }
+    }
+    // Escape — Close any open modal
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.show').forEach(function (m) {
+        m.classList.remove('show');
+      });
+      if (receiptLightbox.classList.contains('show')) {
+        receiptLightbox.classList.remove('show');
+      }
+    }
+  });
+
   // ---- Dark mode ----
   themeToggle.addEventListener('click', function () {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -1370,7 +1815,8 @@
       paid: totals.paid,
       pending: Math.max(0, totals.pending),
       difference: totals.difference,
-      remaining: totals.remaining
+      remaining: totals.remaining,
+      budgetTarget: budgetTarget
     }, contributors);
   });
 
@@ -1400,6 +1846,19 @@
     milestones = loadMilestones();
     contributors = loadContributors();
     weddingDate = loadWeddingDate();
+    budgetTarget = loadBudgetTarget();
+
+    // Set budget input value
+    if (budgetTarget > 0) {
+      budgetTargetInput.value = budgetTarget;
+    }
+
+    // Save initial state for undo
+    lastSavedState = JSON.stringify(categories);
+
+    // Migrate old base64 receipts to IndexedDB
+    migrateReceipts();
+
     renderAll();
     startCountdown();
 
@@ -1413,6 +1872,12 @@
         }
       }, 300);
       setTimeout(function () { clearInterval(retryInterval); }, 15000);
+    }
+
+    // Auto-save indicator: mark as saved on init
+    if (autosaveIndicator) {
+      autosaveIndicator.className = 'autosave-indicator';
+      autosaveText.textContent = 'All changes saved';
     }
   }
 
